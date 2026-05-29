@@ -82,7 +82,6 @@
       html += '<label class="platform-item" data-platform-id="' + p.id + '">';
       html += '  <input type="checkbox" value="' + p.id + '">';
       html += '  <span class="platform-check">✓</span>';
-      html += '  <span class="platform-icon">' + p.icon + '</span>';
       html += '  <div class="platform-info">';
       html += '    <div class="platform-name">' + p.name + '</div>';
       html += '    <div class="platform-desc">' + (Utils?.escapeHTML(p.description) || p.description) + '</div>';
@@ -233,8 +232,9 @@
     renderValidation(state.validationMessages);
     renderPreview(state.adaptedContents);
 
-    // 启用发布和导出按钮
-    if (DOM.btnPublish) DOM.btnPublish.disabled = false;
+    // 启用发布和导出按钮（若存在 error 级别错误则禁用发布按钮，确保流程合理性）
+    var hasError = state.validationMessages.some(function (m) { return m.level === 'error'; });
+    if (DOM.btnPublish) DOM.btnPublish.disabled = hasError;
     if (DOM.btnExport) DOM.btnExport.disabled = false;
 
     // 新增：构建标准统一发布载荷 (PublishPayload) 并渲染
@@ -273,16 +273,16 @@
     DOM.sectionValidation.style.display = '';
 
     var iconMap = {
-      error: '❌',
-      warning: '⚠️',
-      info: 'ℹ️',
-      success: '✅'
+      error: '[错误]',
+      warning: '[建议]',
+      info: '[提示]',
+      success: '[通过]'
     };
 
     var html = '';
     messages.forEach(function (msg) {
       var level = msg.level || 'info';
-      var icon = iconMap[level] || 'ℹ️';
+      var icon = iconMap[level] || '[提示]';
       var platformTag = msg.platform && msg.platform !== '通用'
         ? ' <span class="text-muted">[' + (Utils?.escapeHTML(msg.platform) || msg.platform) + ']</span>'
         : '';
@@ -312,7 +312,6 @@
     adaptedContents.forEach(function (content) {
       var platform = Platforms?.getPlatformById(content.platformId);
       var color = platform?.color || '#4F46E5';
-      var icon = platform?.icon || '📄';
       var desc = platform?.description || '';
 
       // 标签渲染
@@ -328,7 +327,7 @@
       var tipsHtml = '';
       if (content.tips && content.tips.length > 0) {
         tipsHtml += '<div class="preview-tips">';
-        tipsHtml += '<div class="preview-tips-title">💡 发布建议</div>';
+        tipsHtml += '<div class="preview-tips-title">发布建议</div>';
         content.tips.forEach(function (tip) {
           tipsHtml += '<div>• ' + (Utils?.escapeHTML(tip) || tip) + '</div>';
         });
@@ -339,7 +338,6 @@
 
       // 卡片头部（平台标识）
       html += '  <div class="preview-card-header" style="background: ' + color + ';">';
-      html += '    <span class="platform-icon">' + icon + '</span>';
       html += '    <div class="platform-info">';
       html += '      <div class="platform-name">' + (Utils?.escapeHTML(content.platformName) || content.platformName) + '</div>';
       html += '      <div class="platform-desc">' + (Utils?.escapeHTML(desc) || desc) + '</div>';
@@ -357,8 +355,8 @@
 
       // 统计和复制
       html += '    <div class="preview-meta">';
-      html += '      <span class="preview-stats">📊 约 ' + (content.estimatedLength || 0) + ' 字</span>';
-      html += '      <button class="btn btn-copy btn-sm" data-copy-platform="' + content.platformId + '">📋 复制内容</button>';
+      html += '      <span class="preview-stats">字数估算: ' + (content.estimatedLength || 0) + ' 字</span>';
+      html += '      <button class="btn btn-copy btn-sm" data-copy-platform="' + content.platformId + '">复制内容</button>';
       html += '    </div>';
 
       html += tipsHtml;
@@ -419,10 +417,10 @@
         // 按钮状态反馈
         if (btnElement) {
           btnElement.classList.add('copied');
-          btnElement.textContent = '✅ 已复制';
+          btnElement.textContent = '已复制';
           setTimeout(function () {
             btnElement.classList.remove('copied');
-            btnElement.textContent = '📋 复制内容';
+            btnElement.textContent = '复制内容';
           }, 2000);
         }
       }).catch(function () {
@@ -497,7 +495,6 @@
     var html = '';
     // 发布结果头部
     html += '<div class="publish-result-header">';
-    html += '  <span class="result-icon">🎉</span>';
     html += '  <div class="result-info">';
     html += '    <h3>模拟发布成功</h3>';
     html += '    <p>批次号：' + (Utils?.escapeHTML(result.batchId) || result.batchId) + ' | 发布时间：' + (result.publishedAt || '') + ' | 模式：模拟发布</p>';
@@ -508,13 +505,10 @@
     html += '<div class="publish-platform-list">';
     if (result.platforms && result.platforms.length > 0) {
       result.platforms.forEach(function (p) {
-        var platform = Platforms?.getPlatformById(p.platformId);
-        var icon = platform?.icon || '📄';
         html += '<div class="publish-platform-item">';
-        html += '  <span class="pub-icon">' + icon + '</span>';
         html += '  <span class="pub-name">' + (Utils?.escapeHTML(p.platformName) || p.platformName) + '</span>';
         html += '  <span class="pub-status success">' + (Utils?.escapeHTML(p.message) || p.message) + '</span>';
-        html += '  <span class="pub-badge success">✅ 成功</span>';
+        html += '  <span class="pub-badge success">成功</span>';
         html += '</div>';
       });
     }
@@ -555,7 +549,7 @@
       html += '  <span class="history-batch">' + (Utils?.escapeHTML(record.batchId) || record.batchId) + '</span>';
       html += '  <span class="history-title">' + (Utils?.escapeHTML(record.title) || record.title) + '</span>';
       html += '  <div class="history-platforms">' + platformTags + '</div>';
-      html += '  <span class="history-time">🕐 ' + (record.publishedAt || '') + '</span>';
+      html += '  <span class="history-time">' + (record.publishedAt || '') + '</span>';
       html += '  <span class="history-status success">模拟发布</span>';
       html += '</div>';
     });
@@ -612,9 +606,9 @@
       copyPromise.then(function () {
         showToast('发布载荷 JSON 已复制到剪贴板', 'success');
         if (DOM.btnCopyPayload) {
-          DOM.btnCopyPayload.innerHTML = '✅ 已复制';
+          DOM.btnCopyPayload.innerHTML = '已复制';
           setTimeout(function () {
-            DOM.btnCopyPayload.innerHTML = '📋 复制 Payload';
+            DOM.btnCopyPayload.innerHTML = '复制 Payload';
           }, 2000);
         }
       }).catch(function () {
@@ -684,19 +678,19 @@
             DOM.headerBadge.style.background = '';
             DOM.headerBadge.style.color = '';
             DOM.headerBadge.style.border = '';
-            DOM.headerBadge.textContent = '⚡ 模拟发布模式';
+            DOM.headerBadge.textContent = '模拟发布模式';
           } else if (radio.value === 'payload') {
             DOM.headerBadge.className = 'badge';
             DOM.headerBadge.style.background = 'rgba(255,255,255,0.2)';
             DOM.headerBadge.style.color = '#fff';
             DOM.headerBadge.style.border = '1px solid rgba(255,255,255,0.25)';
-            DOM.headerBadge.textContent = '📦 Payload 导出模式';
+            DOM.headerBadge.textContent = 'Payload 导出模式';
           } else if (radio.value === 'connector') {
             DOM.headerBadge.className = 'badge';
             DOM.headerBadge.style.background = 'rgba(255,255,255,0.2)';
             DOM.headerBadge.style.color = '#fff';
             DOM.headerBadge.style.border = '1px solid rgba(255,255,255,0.25)';
-            DOM.headerBadge.textContent = '🔌 连接器预留模式';
+            DOM.headerBadge.textContent = '连接器预留模式';
           }
         }
       });
@@ -731,11 +725,21 @@
   function showToast(message, type, duration) {
     type = type || 'info';
     duration = duration || 3000;
-    var iconMap = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+
+    // 连击去重防刷：使用 textContent.trim() 确保在同一个 Event Loop 或未完成 Layout 渲染时也能精准匹配去重
+    if (DOM.toastContainer) {
+      var activeToasts = DOM.toastContainer.querySelectorAll('.toast');
+      for (var i = 0; i < activeToasts.length; i++) {
+        var toastText = activeToasts[i].textContent || activeToasts[i].innerText || '';
+        if (toastText.trim() === message.trim()) {
+          return; // 已有相同 Toast 展现，直接去重返回
+        }
+      }
+    }
+
     var toast = document.createElement('div');
     toast.className = 'toast toast-' + type;
-    toast.innerHTML = '<span class="toast-icon">' + (iconMap[type] || 'ℹ️') + '</span>' +
-      '<span>' + (Utils?.escapeHTML(message) || message) + '</span>';
+    toast.innerHTML = '<span>' + (Utils?.escapeHTML(message) || message) + '</span>';
     if (DOM.toastContainer) {
       DOM.toastContainer.appendChild(toast);
     }
