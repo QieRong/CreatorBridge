@@ -49,13 +49,23 @@ CreatorBridge 提供一个"写一次，到处发"的效率工具：
 | 技术 | 用途 |
 |------|------|
 | HTML | 页面结构 |
-| CSS | 页面样式、卡片布局、响应式 |
-| JavaScript | 核心逻辑、平台适配、DOM 操作 |
-| localStorage | 草稿保存、发布历史持久化 |
+| CSS | 页面样式、卡片布局、响应式（自主原创） |
+| JavaScript | 核心逻辑、多平台适配算法、DOM 操作（自主原创） |
+| localStorage | 草稿保存、发布历史持久化（自主原创） |
 | Clipboard API | 一键复制功能 |
-| Blob API | 导出文件（可选） |
+| Blob API | 导出文件（可选，自主原创） |
+| **Electron** (可选依赖) | 桌面端应用外壳封装支持 |
+| **Electron Builder** (可选依赖) | 客户端一键打包为免安装 `.exe` 桌面程序 |
 
-**不依赖**：Vue / React / Angular / TypeScript / Node 后端 / 数据库 / 真实平台 API / 大模型 API
+### 💡 自主原创功能声明
+
+本项目**核心功能为 100% 独立设计与原创编写**，未套用任何第三方前/后端开源业务模板：
+1. **多平台适配生成算法** (`src/js/adapters.js`)：针对公众号、知乎、B站、小红书的特色修辞及排版定制，均为原创逻辑开发。
+2. **多级格式校验规则引擎** (`src/js/validator.js`)：支持 error、warning、info 的多层级精准防御性校验逻辑，完全自主实现。
+3. **模拟发布及存储闭环** (`src/js/publisher.js` & `src/js/storage.js`)：独立编写的批次号发生与本地发布史追溯。
+4. **前端响应式卡片美学样式** (`src/css/style.css`)：共 1100 多行，纯 Vanilla CSS 从零实现。
+
+---
 
 ## 📁 项目结构
 
@@ -64,9 +74,12 @@ creator-bridge/
 ├─ AGENTS.md              # Agent 配置文件
 ├─ README.md              # 项目说明
 ├─ index.html             # 主页面
+├─ package.json           # Node 配置与 Electron 启动打包脚本 [NEW]
 ├─ src/
 │  ├─ css/
 │  │  └─ style.css        # 页面样式
+│  ├─ electron/
+│  │  └─ main.js          # Electron 桌面端启动主进程入口 [NEW]
 │  └─ js/
 │     ├─ main.js          # 主入口（事件绑定、流程调度）
 │     ├─ models.js        # 数据模型（UnifiedContent 等）
@@ -79,30 +92,53 @@ creator-bridge/
 └─ docs/
    ├─ design.md           # 系统设计文档
    ├─ test-report.md      # 测试报告
-   └─ demo-script.md      # 演示脚本
+   ├─ demo-script.md      # 演示脚本
+   └─ video-recording-guide.md  # 本地演示视频录屏配音指南 [NEW]
 ```
+
+---
 
 ## 🚀 本地运行
 
-本项目为纯前端项目，无需安装任何依赖。
+本项目提供**双端运行模式**，可直接作为网页版打开，也可一键启动为桌面客户端并打包为 EXE。
 
-**方式一：直接打开**
+### 🌐 网页端运行（免安装任何依赖）
 
+**方式一：直接双击运行**
+* 用浏览器直接双击打开项目根目录下的 [index.html](index.html) 即可完美体验全部核心功能。
+
+**方式二：使用本地静态服务器启动**
 ```bash
-# 用浏览器直接打开 index.html 即可
-```
-
-**方式二：使用本地服务器（推荐）**
-
-```bash
-# 如果安装了 Python
+# 若您本地安装了 Python
 python -m http.server 8080
 
-# 如果安装了 Node.js
+# 若您本地安装了 Node.js
 npx serve .
 
 # 然后访问 http://localhost:8080
 ```
+
+### 💻 桌面客户端运行与一键打包（需 Node 环境）
+
+**第一步：安装桌面外壳依赖**
+```bash
+# 在项目根目录下运行，安装 Electron 启动与打包库
+npm install
+```
+
+**第二步：在本地启动桌面端运行**
+```bash
+# 启动客户端，独立软件窗口将自动弹出
+npm start
+```
+
+**第三步：一键打包为免安装 `.exe` 绿色桌面程序**
+```bash
+# 运行打包编译指令
+npm run dist
+```
+* 构建成功后，项目根目录下的 `dist/` 文件夹中将生成免安装版的 **`CreatorBridge Setup 1.0.0.exe`** 以及绿色解压即开版，直接双击运行即可！
+
 
 ## 📝 使用说明
 
