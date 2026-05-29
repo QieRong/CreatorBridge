@@ -13,7 +13,7 @@ desktop.ini
 *.swo
 
 # Agent 配置（可选是否提交）
-# .agent/
+.agent/
 
 # 环境变量
 .env
@@ -23,3 +23,7 @@ desktop.ini
 dist/
 build/
 out/
+
+# 演示视频录制指南（本地阅读，不上传 GitHub）
+docs/video-recording-guide.md
+
