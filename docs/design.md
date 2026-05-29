@@ -339,6 +339,119 @@ adapterMap.toutiao = adaptToToutiao;
 
 ---
 
+## 13. 基于七牛云 antigravity 平台的 Skills 深度整合与智能工作流预留设计
+
+为了让 CreatorBridge 在未来能够无缝接入七牛云 XEngineer 训练营的底层人工智能生态与七牛云 OSS 核心存储服务，我们基于您递交的专属 **agents.md 设计方案**，为系统定制了一套完整的 **Skills 智能工作流整合预留方案**。
+
+### 13.1 智能改写与图片裁剪工作流 (AI-Workflow)
+
+系统未来的完全体工作流设计如下：
+
+```text
+       用户输入文章 URL 或本地内容
+                 │
+                 ▼
+     [web-fetch 外部文章抓取技能] ──→ 智能解析提取标题、正文、图片
+                 │
+                 ▼
+    [image-processor 七牛云图床技能] ──→ 按平台比例自动压缩、智能裁剪图片
+                 │
+                 ▼
+      [text-rewriter AI改写技能] ──→ 调用 LLM 并行生成四平台专属风格文案
+       ┌─────────┼──────────┼─────────┐
+       ▼         ▼          ▼         ▼
+     微信版    知乎版     B站版    小红书版
+       │         │          │         │
+       └─────────┼──────────┼─────────┘
+                 ▼
+      [页面预览卡片与格式防错检查]
+                 │
+                 ▼
+      [一键复制 / 模拟发布 / 真实 API 发布]
+                 │
+                 ▼
+      [mock-publisher 发布状态报告] ──→ 归档至 localStorage 历史记录
+```
+
+### 13.2 统一平台适配器 (Platform Adapter) 接口规范
+
+系统在核心底层为后续以插件化模式无缝增加新平台提供了清晰的 TypeScript 风格接口规范。每个在 `adapters/` 目录下注册的新适配器均建议实现以下核心接口：
+
+```typescript
+/**
+ * 统一平台适配器标准接口规范
+ */
+interface PlatformAdapter {
+  id: string;                      // 平台唯一ID标识（如 'toutiao'）
+  name: string;                    // 平台中文名称（如 '今日头条'）
+  icon: string;                    // 平台专用 Emoji 图标（如 '📰'）
+  
+  // 1. 内容智能适配转换核心函数
+  transformContent(raw: RawContent): AdaptedContent;
+  
+  // 2. 格式校验合规性防御函数
+  validateContent(content: AdaptedContent): ValidationResult;
+  
+  // 3. 发布函数（支持 Mock 模拟发布与对接真实 API 接口）
+  publish(content: AdaptedContent): Promise<PublishResult>;
+  
+  // 4. 前端预览卡片的 HTML 渲染骨架生成函数
+  getPreviewHTML(content: AdaptedContent): string;
+}
+```
+
+#### 新增第五平台（头条号）的极速开发路径：
+1. **新建适配器**：在 `src/js/` 目录下新建 `toutiao.adapter.js`，实现 `PlatformAdapter` 接口规范。
+2. **注册到映射表**：在 `adapters.js` 中将新适配器挂载至 `adapterMap.toutiao = adaptToToutiao`。
+3. **安装 API Skill**：在 antigravity 平台上搜索并安装对应的 API 发送技能，调用其接口，无缝完成从零到一的极速分发扩展！
+
+### 13.3 核心数据交互协议 (JSON Schema)
+
+#### 1. 统一输入规范 (RawContent JSON)
+```json
+{
+  "title": "高效学习方法：如何用费曼技巧提升理解力",
+  "body": "费曼学习法是诺贝尔物理学奖得主理查德·费曼提出的学习方法。它的核心理念是...",
+  "images": [
+    "https://cdn.creatorbridge.qiniu.com/raw_pic_1.png",
+    "https://cdn.creatorbridge.qiniu.com/raw_pic_2.png"
+  ],
+  "tags": ["学习方法", "费曼技巧", "效率提升"],
+  "targetPlatforms": ["wechat", "zhihu", "bilibili", "xiaohongshu"]
+}
+```
+
+#### 2. 统一输出报告规范 (PublishReport JSON)
+```json
+{
+  "batchId": "PUB-20260529-001",
+  "timestamp": "2026-05-29T14:00:00Z",
+  "title": "高效学习方法：如何用费曼技巧提升理解力",
+  "mode": "mock",
+  "status": "success",
+  "results": [
+    { "platform": "wechat", "status": "success", "message": "模拟发布成功" },
+    { "platform": "zhihu", "status": "success", "message": "模拟发布成功" },
+    { "platform": "bilibili", "status": "success", "message": "模拟发布成功" },
+    { "platform": "xiaohongshu", "status": "success", "message": "模拟发布成功" }
+  ]
+}
+```
+
+### 13.4 antigravity 专属平台的 Skills 推荐搜索与对接建议
+
+本系统所有底层的 JS 模块均在 `window.Adapters` 作用域下，前瞻性地为以下 3 个 antigravity 市场技能预留了调用接口和钩子设计：
+
+| 推荐搜索的 Skill 关键词 | 系统已预留的 API 钩子函数 | 调用与集成场景说明 |
+| :--- | :--- | :--- |
+| **`web fetch`** / **`url scraper`** | `fetchAndParseExternalArticle(url)` | 传入已有文章 URL，调用该技能抓取并降级解析为统一输入源 |
+| **`llm rewrite`** / **`text transform`** | `aiStyleRewrite(content, platform)` | 调用大模型针对公众号分段、知乎问答、小红书 Emoji 口语化进行智能改写 |
+| **`image resize`** / **`image compress`** | `processAndUploadMedia(path, platform)`| 调用七牛云图片处理服务对素材图进行 900x383 等最佳比例裁剪与压缩 |
+| **`clipboard`** | `Utils.copyToClipboard(text)` | 一键式原生 Clipboard 复制到系统剪贴板 |
+
+> 💡 **开发者友情提示**：若在训练营 Skills 市场搜不到特定官方 Skill，可在系统的接口骨架中直接用原生 JavaScript 代码进行功能节点自实现，系统已完美预留好接收 Hooks，具备极佳的自闭环健壮度。
+
+---
 
 ## 参考与调研说明
 

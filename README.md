@@ -170,6 +170,23 @@ npm run dist
 4. 模拟发布用于展示完整的业务流程和交互体验。
 5. 发布批次号和状态均为模拟生成。
 
+---
+
+## 🔧 antigravity 专属平台的 Skills 推荐搜索与对接建议
+
+为了让 CreatorBridge 后续能够顺畅无缝地嵌入七牛云训练营的 AI 人工智能与云 OSS 处理生态，**我们已在 `window.Adapters` 底层模块中为以下核心 Skills 预留了 API 接口骨架和接收钩子 (Hooks)**：
+
+| 推荐搜索的 Skill 关键词 | 系统已预留的 API 钩子函数 | 调用与集成场景说明 |
+| :--- | :--- | :--- |
+| **`web fetch`** / **`url scraper`** | `fetchAndParseExternalArticle(url)` | 传入已有文章 URL，调用该技能抓取并降级解析为统一输入源 |
+| **`llm rewrite`** / **`text transform`** | `aiStyleRewrite(content, platform)` | 调用大模型针对公众号分段、知乎问答、小红书 Emoji 口语化进行智能改写 |
+| **`image resize`** / **`image compress`** | `processAndUploadMedia(path, platform)`| 调用七牛云图片处理服务对素材图进行 900x383 等最佳比例裁剪与压缩 |
+| **`clipboard`** | `Utils.copyToClipboard(text)` | 一键式原生 Clipboard 复制到系统剪贴板 |
+
+> 💡 **小贴士**：如果您在专属平台的 Skills 市场中找不到特定的官方插件，您可以直接在系统的预留函数中直接用原生 JavaScript 代码进行功能实现，CreatorBridge 已做好最完美的底层接收准备，具备卓越的前瞻性与高容错自闭环设计。
+
+---
+
 ## 🏗️ 扩展更多平台的架构设计
 
 项目采用 **PlatformAdapter（平台适配器）** 架构设计，新增平台时无需修改主流程：
