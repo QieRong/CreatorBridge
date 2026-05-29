@@ -114,6 +114,77 @@
         </div>
       </section>
 
+      <!-- ===== 新增栏：发布模式与连接器预留 ===== -->
+      <section class="section section-mode" id="section-mode">
+        <div class="section-header">
+          <h2 class="section-title">🔌 发布模式与连接器预留</h2>
+          <p class="section-desc">配置当前发布的工作模式，支持模拟验证、数据导出及未来自建后端连接器对接</p>
+        </div>
+        <div class="card">
+          <div class="mode-selector">
+            <label class="mode-option active" data-mode="mock">
+              <input type="radio" name="publish-mode" value="mock" checked>
+              <span class="mode-icon">⚡</span>
+              <div class="mode-info">
+                <span class="mode-name">Mock 模拟发布</span>
+                <span class="mode-status">当前默认演示</span>
+              </div>
+            </label>
+            <label class="mode-option" data-mode="payload">
+              <input type="radio" name="publish-mode" value="payload">
+              <span class="mode-icon">📦</span>
+              <div class="mode-info">
+                <span class="mode-name">Payload JSON 导出</span>
+                <span class="mode-status">当前支持</span>
+              </div>
+            </label>
+            <label class="mode-option" data-mode="connector">
+              <input type="radio" name="publish-mode" value="connector">
+              <span class="mode-icon">🔌</span>
+              <div class="mode-info">
+                <span class="mode-name">Connector 自定义连接器</span>
+                <span class="mode-status">设计预留</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Connector 配置说明面板 -->
+          <div class="connector-panel" id="connector-panel" style="display: none;">
+            <div class="connector-panel-header">
+              <h4>🛠️ Connector 自定义连接器配置（设计预留）</h4>
+              <p class="panel-warning-text">⚠️ 提示：当前阶段仅展示配置入口，暂不发起真实网络请求，后续可扩展。</p>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label" for="connector-url">API Base URL 预留输入框</label>
+              <input type="text" class="form-input" id="connector-url" placeholder="https://api.yourdomain.com/publish" value="">
+              <div class="input-hint">仅作为自建后端中转接口的地址预留展示，本阶段不保存到 localStorage</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">后续鉴权方式设计说明</label>
+              <div class="auth-types-info">
+                <span class="auth-badge">None (无鉴权)</span>
+                <span class="auth-badge">Bearer Token</span>
+                <span class="auth-badge">Custom Headers</span>
+              </div>
+              <div class="input-hint">说明：仅作为后续后端鉴权逻辑的参考展示。为保护敏感数据，本阶段不保存 Token、Cookie、AppSecret、账号密码等敏感凭证，也不提供 Token 输入框。</div>
+            </div>
+
+            <div class="alert-box alert-safety">
+              <p class="alert-title">🔒 安全保护与架构扩展声明</p>
+              <ul class="alert-list">
+                <li>真实发布需要用户自建后端中转服务以避免在前端保存敏感凭证。</li>
+                <li>当前前端项目不内置微信、知乎、B站、小红书等真实发布接口。</li>
+                <li>当前阶段不发起 fetch、XMLHttpRequest 或其他真实网络请求。</li>
+                <li>真实发布取决于平台授权、接口权限和后端自建服务的具体实现。</li>
+                <li>本工具通过标准统一发布载荷 (PublishPayload) 结构保持向后兼容性。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ===== 新增栏：Payload JSON 载荷预览区 ===== -->
       <section class="section section-payload" id="section-payload">
         <div class="section-header">

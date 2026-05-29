@@ -65,6 +65,11 @@
     DOM.btnCopyPayload = document.getElementById('btn-copy-payload');
     DOM.btnExportPayload = document.getElementById('btn-export-payload');
     DOM.payloadCode = document.getElementById('payload-code');
+
+    // 新增：发布模式与连接器相关 DOM 缓存
+    DOM.connectorPanel = document.getElementById('connector-panel');
+    DOM.connectorUrl = document.getElementById('connector-url');
+    DOM.headerBadge = document.querySelector('.header-badge .badge');
   }
 
   /** 渲染平台选择器 */
@@ -653,6 +658,51 @@
     }
   }
 
+  /** 绑定发布模式切换事件 */
+  function bindModeEvents() {
+    var radios = document.querySelectorAll('input[name="publish-mode"]');
+    var options = document.querySelectorAll('.mode-option');
+    if (radios.length === 0) return;
+
+    radios.forEach(function (radio) {
+      radio.addEventListener('change', function () {
+        // 1. 更新选中卡片的 active 激活样式
+        options.forEach(function (opt) {
+          var isCurrent = opt.getAttribute('data-mode') === radio.value;
+          opt.classList.toggle('active', isCurrent);
+        });
+
+        // 2. 控制 Connector 面板显示/隐藏
+        if (DOM.connectorPanel) {
+          DOM.connectorPanel.style.display = radio.value === 'connector' ? 'block' : 'none';
+        }
+
+        // 3. 联动更新顶部 Header Badge
+        if (DOM.headerBadge) {
+          if (radio.value === 'mock') {
+            DOM.headerBadge.className = 'badge badge-mock';
+            DOM.headerBadge.style.background = '';
+            DOM.headerBadge.style.color = '';
+            DOM.headerBadge.style.border = '';
+            DOM.headerBadge.textContent = '⚡ 模拟发布模式';
+          } else if (radio.value === 'payload') {
+            DOM.headerBadge.className = 'badge';
+            DOM.headerBadge.style.background = 'rgba(255,255,255,0.2)';
+            DOM.headerBadge.style.color = '#fff';
+            DOM.headerBadge.style.border = '1px solid rgba(255,255,255,0.25)';
+            DOM.headerBadge.textContent = '📦 Payload 导出模式';
+          } else if (radio.value === 'connector') {
+            DOM.headerBadge.className = 'badge';
+            DOM.headerBadge.style.background = 'rgba(255,255,255,0.2)';
+            DOM.headerBadge.style.color = '#fff';
+            DOM.headerBadge.style.border = '1px solid rgba(255,255,255,0.25)';
+            DOM.headerBadge.textContent = '🔌 连接器预留模式';
+          }
+        }
+      });
+    });
+  }
+
   // ========== 清空历史 ==========
 
   /** 绑定清空历史按钮 */
@@ -711,6 +761,7 @@
     bindExportButton();
     bindClearHistoryButton();
     bindPayloadEvents(); // 新增：绑定载荷交互事件
+    bindModeEvents(); // 新增：绑定发布模式切换事件
     renderHistory();
     console.log('CreatorBridge 初始化完成 ✓');
   }
