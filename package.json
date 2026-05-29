@@ -1,0 +1,48 @@
+{
+  "name": "creator-bridge",
+  "version": "1.0.0",
+  "description": "CreatorBridge 多平台内容适配发布助手 - 暑期实训营项目",
+  "main": "src/electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "keywords": [
+    "creator",
+    "publishing",
+    "formatter",
+    "electron"
+  ],
+  "author": "QieRong",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.creatorbridge.app",
+    "productName": "CreatorBridge",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "files": [
+      "index.html",
+      "src/**/*",
+      "package.json"
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CreatorBridge"
+    }
+  }
+}
