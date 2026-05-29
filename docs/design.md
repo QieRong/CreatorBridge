@@ -3,456 +3,223 @@
 ## 1. 需求背景
 
 ### 1.1 题目要求
-
 暑期实训营题目二：多平台内容发布工具。
+很多创作者需要在公众号、知乎、B站、小红书等平台同步发布内容，但格式适配很麻烦。需要设计并实现一个工具，帮助创作者提升发布效率和便捷性。用户在工具中输入内容，可自动适配各平台格式与风格，并支持一键发布，可选模拟发布。需给出扩展更多平台的架构设计。
 
-很多创作者需要在公众号、知乎、B站、小红书等平台同步发布内容，但格式适配很麻烦。需要设计并实现一个工具，帮助创作者提升发布效率和便捷性。
+### 1.2 项目定位
+本项目定位于多平台内容适配与模拟发布验证工具。由于前端直接保存平台私钥或进行真实发布存在密钥泄露风险与接口限制阻碍，系统当前版本以本地**模拟发布**为主，并在架构上设计并**预留了自定义连接器配置与 Payload 导出能力**（为后续扩展设计预留），允许创作者通过自建的后端代理服务安全、合规地扩展真实发布能力。
 
-### 1.2 核心问题
+---
 
-1. 不同平台的标题、正文、标签格式要求各不相同。
-2. 手动为每个平台修改内容耗时且容易遗漏。
-3. 缺乏统一的预览和检查机制。
-4. 发布记录分散在各平台，难以统一管理。
+## 2. 系统三层架构设计
 
-## 2. 目标用户
-
-| 用户角色 | 使用场景 | 核心需求 |
-|----------|----------|----------|
-| 自媒体创作者 | 多平台同步发布文章 | 一次输入，多平台输出 |
-| 技术博主 | 在知乎、公众号同步发技术文 | 格式自动适配 |
-| 视频UP主 | 在B站发视频简介、小红书发笔记 | 快速生成不同风格文案 |
-| 内容运营 | 批量管理多平台发布任务 | 发布历史和状态管理 |
-
-## 3. 使用场景
-
-### 场景一：博主写一篇技术文
-
-1. 在 CreatorBridge 输入原始文章。
-2. 选择公众号、知乎、B站。
-3. 一键适配，获得三个平台版本。
-4. 检查格式，复制到各平台发布。
-
-### 场景二：UP主发一期视频
-
-1. 输入视频主题和看点。
-2. 选择B站和小红书。
-3. B站生成视频简介（含互动引导），小红书生成种草笔记。
-4. 模拟发布，确认内容无误后复制。
-
-## 4. 功能模块说明
+为了保证平台格式转换与网络发布逻辑解耦，CreatorBridge 采用三层分离架构设计：
 
 ```text
-┌─────────────────────────────────────┐
-│           CreatorBridge             │
-├──────────┬──────────┬───────────────┤
-│  输入层  │  处理层   │    展示层     │
-├──────────┼──────────┼───────────────┤
-│ 标题输入 │ 数据模型  │  平台预览     │
-│ 正文输入 │ 平台配置  │  格式检查     │
-│ 标签输入 │ 内容适配  │  发布结果     │
-│ 素材备注 │ 格式校验  │  发布历史     │
-│ 平台选择 │ 模拟发布  │  Toast通知    │
-│          │ 本地存储  │              │
-└──────────┴──────────┴───────────────┘
+┌────────────────────────────────────────────────────────┐
+│               第一层：内容输入与统一模型                  │
+│   - 用户输入原始标题、正文、标签、素材备注               │
+│   - 组装并规范化为 UnifiedContent 统一内容数据对象       │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│               第二层：平台格式适配层                     │
+│   - WechatAdapter      - ZhihuAdapter                  │
+│   - BilibiliAdapter    - XiaohongshuAdapter            │
+│   - 针对不同平台的排版要求、字数限制及修辞风格进行转换   │
+│   - 产出各平台专用的 AdaptedContent 数据对象             │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│               第三层：发布调度与模式分发层                │
+│   - 统一 Publisher 调度接口                             │
+│   - 模式一：MockPublisher (前端本地模拟)                 │
+│   - 模式二：CustomConnectorPublisher (计划实现)          │
+│   - 模式三：Payload 导出 (下载标准的 publishPayload.json)│
+└────────────────────────────────────────────────────────┘
 ```
 
-### 4.1 输入层
+### 2.1 第一层：内容输入与统一模型
+负责接收原始输入信息，屏蔽物理表单差异。本层通过 `Models.createUnifiedContent` 将多段内容结构化，并将其封装为 `UnifiedContent` 统一承载实体，供后续流转。此层属于当前支持的核心功能。
 
-- **内容输入**：标题、正文、标签、素材链接/备注
-- **平台选择**：公众号、知乎、B站、小红书（可多选）
+### 2.2 第二层：平台适配器层
+采用适配器模式（Adapter Pattern），各平台对应一个独立的 Transform 适配规则。各适配器负责解析 `UnifiedContent` 对象的属性，按照目标社交平台的字数限制、排版标签、Emoji 偏好及互动风格，生成对应的 `AdaptedContent` 对象，支持一键复制与格式校验。此层属于当前支持的核心功能。
 
-### 4.2 处理层
+### 2.3 第三层：发布调度层（计划实现）
+负责根据用户的连接配置路由具体的分发路径。当创作者点击发布时，该层获取各平台适配结果，通过统一的 Publisher 发起相应的分发动作。它支持 Mock、Connector、Payload 三种模式，在前端实现发布状态收集与历史记录的本地归档。
+* **Mock 模式**：当前已支持。
+* **Connector 模式** 与 **Payload 模式**：计划实现，作为后续扩展设计预留。
 
-- **数据模型** (models.js)：统一内容模型的创建和规范化
-- **平台配置** (platforms.js)：各平台参数（名称、限制、颜色等）
-- **内容适配** (adapters.js)：将统一内容转换为各平台专属格式
-- **格式校验** (validator.js)：检查内容是否符合平台要求
-- **模拟发布** (publisher.js)：生成发布批次号和模拟状态
-- **本地存储** (storage.js)：草稿和发布历史的持久化
+---
 
-### 4.3 展示层
+## 3. 核心概念与数据模型设计（设计预留）
 
-- **平台预览**：每个平台独立卡片，展示适配后内容
-- **格式检查**：error / warning / info 三级提示
-- **发布结果**：发布批次号、各平台状态
-- **发布历史**：历史记录列表
-- **Toast通知**：操作反馈提示
-
-## 5. 数据流说明
-
-```text
-用户输入 → UnifiedContent → PlatformAdapter → AdaptedContent → 预览/复制
-                                    ↓
-                              Validator → 校验结果 → 格式检查展示
-                                    ↓
-                            MockPublisher → PublishResult → 发布历史
-                                    ↓
-                              Storage → localStorage
-```
-
-### 流程描述
-
-1. 用户填写标题、正文、标签，选择目标平台。
-2. 点击「一键适配」，系统创建 UnifiedContent（统一内容模型）。
-3. 系统调用各平台的 Adapter，将 UnifiedContent 转换为 AdaptedContent。
-4. 同时调用 Validator 进行格式校验，生成检查结果。
-5. 页面渲染预览卡片和校验消息。
-6. 用户可复制单个平台内容，或点击「模拟发布」。
-7. MockPublisher 生成发布批次号和各平台发布状态。
-8. Storage 将发布结果保存到 localStorage。
-
-## 6. UnifiedContent 数据模型
-
-统一内容模型是整个系统的核心数据结构，用于存储用户输入的原始内容。
-
-```js
+### 3.1 UnifiedContent（统一内容模型）
+统一内容模型是整个系统的核心输入数据结构，用于存储创作者输入的原始内容。
+* **JavaScript 对象结构**：
+```javascript
 const unifiedContent = {
-  id: 'content_时间戳',         // 唯一ID
-  title: '原始标题',            // 用户输入的标题
-  body: '正文内容',             // 用户输入的正文
-  tags: ['标签1', '标签2'],     // 拆分后的标签数组
-  media: [{                     // 素材信息（可选）
+  id: 'content_1716960000000',  // 唯一ID标识
+  title: '原始标题',             // 创作者输入的标题
+  body: '正文内容',              // 创作者输入的正文
+  tags: ['标签1', '标签2'],      // 拆分后的标签数组
+  media: [{                      // 备注素材信息
     type: 'link',
-    url: '',
-    description: ''
+    url: 'https://...',
+    description: '素材备注说明'
   }],
-  metadata: {                   // 元数据
-    authorNote: '',
-    createdAt: '',
-    updatedAt: '',
+  metadata: {
+    createdAt: '2026-05-29 15:00:00',
     source: 'manual-input'
   }
 };
 ```
 
-## 7. PlatformAdapter 架构设计
+### 3.2 AdaptedContent（平台适配内容模型）
+存储单个平台进行格式适配后的专属渲染数据。
+* **JavaScript 对象结构**：
+```javascript
+const adaptedContent = {
+  platformId: 'wechat',          // wechat | zhihu | bilibili | xiaohongshu
+  platformName: '微信公众号',
+  title: '适配后的专属标题',
+  body: '适配后的排版正文',
+  tags: ['标签1', '标签2'],
+  tips: ['发布排版建议1', '建议2'],
+  warnings: ['合规警告1'],
+  estimatedLength: 1200,         // 预计排版后字符数
+  generatedAt: '2026-05-29 15:00:05'
+};
+```
 
-### 7.1 设计思想
-
-采用适配器模式（Adapter Pattern），每个平台实现一个独立的适配器。适配器负责将 UnifiedContent 转换为该平台专属的 AdaptedContent。
-
-```js
-// 适配器统一接口
-const PlatformAdapter = {
-  id: 'platform-id',
-  name: '平台名称',
-  transform(unifiedContent) {
-    // 将统一内容转换为平台格式
-    return adaptedContent;
+### 3.3 PublishPayload（统一发布载荷协议 - 已完成挂载，设计预留）
+面向未来真实发布器以及中转接口的标准化数据封装格式。
+* **数据结构示例**：
+```json
+{
+  "batchId": "PUB-20260529-001",
+  "mode": "connector",
+  "source": {
+    "contentId": "content_1716960000000",
+    "title": "原始标题",
+    "tags": ["学习", "效率工具"],
+    "createdAt": "2026-05-29 15:00:00"
   },
-  validate(adaptedContent) {
-    // 校验适配后内容是否符合平台要求
-    return validationMessages;
-  },
-  getPreview(adaptedContent) {
-    // 返回预览结构
-    return previewData;
+  "targets": [
+    {
+      "platformId": "wechat",
+      "platformName": "微信公众号",
+      "title": "深度解读：原始标题",
+      "body": "【导语】...【重点总结】...",
+      "tags": ["学习", "效率工具"],
+      "formatType": "article",
+      "media": [],
+      "tips": ["建议配合排版工具"],
+      "warnings": []
+    }
+  ],
+  "options": {
+    "dryRun": false,
+    "saveAsDraft": true,
+    "publishNow": false
+  }
+}
+```
+
+### 3.4 ConnectorConfig（连接器配置模型 - 已完成挂载，设计预留）
+用于前端本地暂存的连接器配置模型。为确保密钥安全性，Token 不进入持久化数据结构，亦不作为持久化字段留存，仅在运行时作为临时变量使用。
+* **字段约定**：
+```javascript
+const connectorConfig = {
+  mode: "mock",           // mock | connector | payload
+  apiBaseUrl: "",        // 自建中转 API 的基础地址
+  authType: "none",      // none (无鉴权) | bearer (Bearer Token) | custom (自定义)
+  customHeaders: {},     // 自定义请求头参数
+  saveCredential: false, // 是否保存配置（仅允许保存 apiBaseUrl, authType, platformMapping 等非敏感参数）
+  platformMapping: {
+    wechat: { enabled: false, endpoint: "/publish/wechat", publishType: "draft" },
+    zhihu: { enabled: false, endpoint: "/publish/zhihu", publishType: "draft" },
+    bilibili: { enabled: false, endpoint: "/publish/bilibili", publishType: "article" },
+    xiaohongshu: { enabled: false, endpoint: "/publish/xiaohongshu", publishType: "note" }
   }
 };
 ```
 
-### 7.2 当前实现的适配器
+---
 
-| 适配器 | 平台 | 风格特征 |
-|--------|------|----------|
-| WechatAdapter | 微信公众号 | 正式权威，导语+分段+总结 |
-| ZhihuAdapter | 知乎 | 理性分析，问题式标题+分点论证 |
-| BilibiliAdapter | B站 | 年轻化，吸睛标题+互动引导 |
-| XiaohongshuAdapter | 小红书 | 口语种草，短标题+emoji+话题 |
+## 4. 发布调度器与具体发布模式实现
 
-### 7.3 适配器注册表
+本系统已将 `window.Publisher` 重构为高内聚、接口化的“发布器调度中心”。所有发布器实体均实现通用接口规范。
 
-```js
-// 适配器通过注册表管理，新增平台只需注册即可
-const adapterMap = {
-  wechat: adaptToWechat,
-  zhihu: adaptToZhihu,
-  bilibili: adaptToBilibili,
-  xiaohongshu: adaptToXiaohongshu
-  // 新增平台在此注册
-};
-```
+### 4.1 MockPublisher（本地模拟发布器）
+* **职责**：纯本地运行的业务流程闭环。
+* **实现逻辑**：当前已支持。点击发布后，跳过任何网络请求，自动生成唯一的发布批次号与当前服务器时间，将各平台状态置为“模拟发布成功”，并将结果以 `mode: 'mock'` 记录于本地的 localStorage 历史记录中，供创作者演示完整的内容适配和发布链路。
 
-## 8. MockPublisher 设计
+### 4.2 CustomConnectorPublisher（自定义连接器发布器 - 已完成底层预留）
+* **职责**：面向“接口预留型”真实发布中转扩展。
+* **实现逻辑**：
+  1. 创作者在配置栏中填写自建的后端 API 接口基础地址及鉴权凭证。
+  2. 点击发布时，调度器自动组装 `PublishPayload`。
+  3. 预留通过 `fetch POST` 请求将标准载荷推送到创作者自建中转服务的能力。
+  4. 支持捕获网络超时与 CORS（跨域）拦截，提供对本地开发跨域调试的指南。
+  5. 不管请求成功或失败，均会将事件登记于发布历史中，并标记为 `mode: 'connector'` 以供核对。
+  6. 当前阶段作为结构与分发能力预留，不向 localStorage 写入任何敏感字段。
 
-### 8.1 发布流程
-
-```text
-1. 用户点击「模拟发布」
-2. 系统检查是否已有适配结果
-3. 系统检查是否存在 error 级别错误
-4. 系统生成发布批次号（格式：PUB-YYYYMMDD-XXX）
-5. 系统生成发布时间
-6. 系统为每个平台生成模拟发布状态
-7. 系统将结果保存到 localStorage
-8. 页面展示发布结果和历史记录
-```
-
-### 8.2 PublishResult 数据模型
-
-```js
-const publishResult = {
-  batchId: 'PUB-20260529-001',
-  title: '原始标题',
-  mode: 'mock',
-  status: 'success',
-  publishedAt: '2026-05-29 20:30:00',
-  platforms: [
-    {
-      platformId: 'wechat',
-      platformName: '公众号',
-      status: 'success',
-      message: '模拟发布成功'
-    }
-  ]
-};
-```
-
-### 8.3 重要声明
-
-- 当前版本不做真实发布。
-- 不连接真实平台接口。
-- 不保存任何真实密钥。
-- 模拟发布用于展示完整业务流程。
-
-## 9. 新平台扩展流程
-
-如需新增一个平台（如今日头条），只需以下步骤：
-
-### 步骤一：新增平台配置
-
-在 `platforms.js` 中添加：
-
-```js
-{
-  id: 'toutiao',
-  name: '今日头条',
-  icon: '📰',
-  description: '适合新闻资讯、图文内容',
-  maxTitleLength: 30,
-  maxBodyLength: 5000,
-  maxTags: 5,
-  color: '#FF0000'
-}
-```
-
-### 步骤二：新增适配函数
-
-在 `adapters.js` 中添加：
-
-```js
-function adaptToToutiao(unified) {
-  // 今日头条的内容转换逻辑
-  return Models.createAdaptedContent(...);
-}
-
-// 注册到适配器表
-adapterMap.toutiao = adaptToToutiao;
-```
-
-### 步骤三：补充校验规则
-
-在 `validator.js` 中添加今日头条特定的校验规则。
-
-### 步骤四：无需修改主流程
-
-`main.js` 会自动从 `platforms.js` 读取平台列表并渲染，无需手动修改。
-
-## 10. 异常情况处理
-
-| 异常场景 | 处理方式 |
-|----------|----------|
-| 标题为空 | 显示 error 级别提示，阻止适配 |
-| 正文为空 | 显示 error 级别提示，阻止适配 |
-| 未选择平台 | 显示 error 级别提示，阻止适配 |
-| 标题超长 | 显示 warning 级别提示，建议修改 |
-| 标签过多 | 显示 warning 级别提示，建议精简 |
-| 小红书正文超1000字 | 显示 error 级别提示 |
-| localStorage 不可用 | console.error 降级处理 |
-| Clipboard API 不可用 | 降级为 execCommand 方案 |
-
-## 11. 未来真实发布扩展方案
-
-如果未来需要对接真实平台 API，建议架构：
-
-```text
-┌──────────┐     ┌──────────────┐     ┌─────────────┐
-│  前端    │ --> │   API 网关   │ --> │  平台发布器  │
-│ (现有)   │     │  (Node/Go)   │     │             │
-└──────────┘     └──────────────┘     ├─────────────┤
-                                      │ WechatPub   │
-                                      │ ZhihuPub    │
-                                      │ BilibiliPub │
-                                      │ XiaohongshuP│
-                                      └─────────────┘
-```
-
-关键要求：
-1. 平台密钥必须保存在服务端，前端不存储敏感信息。
-2. 真实发布必须处理平台授权、内容审核、失败重试。
-3. 需要实现发布状态回调，前端轮询或 WebSocket 获取状态。
-4. 当前 MockPublisher 可作为开发和测试的降级方案。
+### 4.3 PlatformPublisherPlaceholder（平台官方接口占位器 - 计划实现）
+* **职责**：在系统底层针对未来直接扩展官方真实发布接口预留扩展骨架。
+* **设计**：
+  * 内含 `WechatPublisherPlaceholder`、`ZhihuPublisherPlaceholder` 等模块。
+  * 当前仅作接口参数完整性断言。如果用户没有配置后端服务，在连接器未配置的状态下直接点击真实发布按钮，系统将自动拦截并提示“当前未配置连接器，已自动使用模拟发布”等友好警示，防止前端暴露密钥。
 
 ---
 
-## 12. 桌面端外壳（Electron）封装与打包设计
+## 5. 用户自建后端中转服务设计思路
 
-为了提升用户体验并响应桌面应用的需求，CreatorBridge 提供了可选的桌面应用（EXE）打包支持。我们采用了 **Electron 外壳架构**，在不侵入或修改任何网页版前端核心业务逻辑的前提下，实现网页版资源的桌面端平滑集成。
-
-### 12.1 架构设计
-
-桌面端包含两个主要进程：
-1. **主进程 (Main Process)**：运行于 `src/electron/main.js`，掌控应用生命周期，配置原生的 Chromium 窗口（BrowserWindow），隐藏系统多余菜单。
-2. **渲染进程 (Renderer Process)**：即我们原生的 HTML/CSS/JS 静态代码。通过主进程的 `mainWindow.loadFile()` 将本地 index.html 载入渲染。
+出于“**前端不保存密钥**”的安全合规限制，创作者应当使用自建的后端中转服务来实现真实的分发上云。其拓扑协作关系如下：
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│                    Electron 桌面外壳                     │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │   主进程 (main.js)                                 │  │
-│  │   - 窗口管理 (1280x800)                           │  │
-│  │   - 去除系统默认菜单栏                              │  │
-│  │   - 生命周期管控 (app.ready, window-all-closed)   │  │
-│  └───────────────────────┬───────────────────────────┘  │
-│                          │ loadFile()                   │
-│  ┌───────────────────────▼───────────────────────────┐  │
-│  │   渲染进程 (index.html)                            │  │
-│  │   - HTML5 / CSS3 / Vanilla JS 核心适配逻辑         │  │
-│  │   - 本地持久化缓存 (localStorage)                  │  │
-│  └───────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────┘
+┌───────────────┐                  ┌─────────────────────┐                  ┌───────────────┐
+│   Creator     │  标准 Payload    │  自建后端中转服务器  │  服务端注入密钥   │  社交媒体平台  │
+│   前端页面    │ ───────────────> │  (Express/Go/Java)  │ ───────────────> │ (公众号/知乎) │
+│ (Connector模) │  (安全网络传输)   │  (安全密钥管理中心)  │  (HTTPS官方API)  │ (官方草稿箱)  │
+└───────────────┘                  └─────────────────────┘                  └───────────────┘
 ```
 
-### 12.2 多进程安全策略
+> **⚠️ 重要声明**：上述架构与协作关系仅作为未来后端中转服务的设计思路说明，不属于当前前端项目内置的真实发布服务。真实发布需要用户自建后端并获得平台授权，不属于当前前端内置能力。
 
-我们在主进程的 `webPreferences` 中开启了最严格的企业级安全选项：
-* **`contextIsolation: true`**：启用上下文隔离，阻止渲染进程中的恶意脚本直接访问 Electron 内部 API 或 Node 底层特权，杜绝 XSS 漏洞带来的安全隐患。
-* **`nodeIntegration: false`**：在渲染进程中完全停用 Node.js 模块支持，使网页版的前端代码保持纯粹的 Web 沙盒环境。
-* **`sandbox: true`**：为渲染进程窗口开启 Chromium 沙盒，使其与宿主系统进行强力安全隔离。
-
-### 12.3 桌面端一键打包机制
-
-我们使用 `electron-builder` 在本地实现自动化构建，通过 `package.json` 中的 `build` 选项进行编译参数声明：
-* **文件归档约束**：仅打包 `index.html`、`src/` 以及 `package.json`，主动忽略 `.git/`、`docs/` 等辅助文档与无用目录，控制打包体积。
-* **NSIS 免安装程序配置**：将打包目标设定为绿色解压即开的 ZIP 格式及免配置直接运行的 `.exe` 可执行安装文件（一键式静默解压，自动生成桌面与开始菜单快捷方式），提供极佳的用户交付体验。
+### 5.1 自建后端协作职责
+1. **中转服务鉴权**：验证前端发送的请求 Header 中的自定义 Token，防止接口被非法盗刷。
+2. **密钥安全注入**：将目标平台的 `AppSecret`、`AppID`、`Token` 或 `Cookie` 等长期保密凭证安全保存在后端服务器的环境变量或密钥托管中心，**决不暴露在前端浏览器中**。
+3. **内容安全审查与签名**：在服务端对内容进行签名与预检，再发起 HTTPS POST 到平台官方 API（如公众号的草稿箱接口）。
+4. **失败重试与回调管理**：处理由于目标平台频率限制或网络抖动带来的请求失败。
 
 ---
 
-## 13. 基于七牛云 antigravity 平台的 Skills 深度整合与智能工作流预留设计
+## 6. 新增真实平台适配器与发布器的步骤
 
-为了让 CreatorBridge 在未来能够无缝接入七牛云 XEngineer 训练营的底层人工智能生态与七牛云 OSS 核心存储服务，我们基于您递交的专属 **agents.md 设计方案**，为系统定制了一套完整的 **Skills 智能工作流整合预留方案**。
+由于系统采用了 PlatformAdapter 架构体系，未来如需新增一个新平台（例如“微博”），扩展逻辑清晰：
 
-### 13.1 智能改写与图片裁剪工作流 (AI-Workflow)
-
-系统未来的完全体工作流设计如下：
-
-```text
-       用户输入文章 URL 或本地内容
-                 │
-                 ▼
-     [web-fetch 外部文章抓取技能] ──→ 智能解析提取标题、正文、图片
-                 │
-                 ▼
-    [image-processor 七牛云图床技能] ──→ 按平台比例自动压缩、智能裁剪图片
-                 │
-                 ▼
-      [text-rewriter AI改写技能] ──→ 调用 LLM 并行生成四平台专属风格文案
-       ┌─────────┼──────────┼─────────┐
-       ▼         ▼          ▼         ▼
-     微信版    知乎版     B站版    小红书版
-       │         │          │         │
-       └─────────┼──────────┼─────────┘
-                 ▼
-      [页面预览卡片与格式防错检查]
-                 │
-                 ▼
-      [一键复制 / 模拟发布 / 真实 API 发布]
-                 │
-                 ▼
-      [mock-publisher 发布状态报告] ──→ 归档至 localStorage 历史记录
-```
-
-### 13.2 统一平台适配器 (Platform Adapter) 接口规范
-
-系统在核心底层为后续以插件化模式无缝增加新平台提供了清晰的 TypeScript 风格接口规范。每个在 `adapters/` 目录下注册的新适配器均建议实现以下核心接口：
-
-```typescript
-/**
- * 统一平台适配器标准接口规范
- */
-interface PlatformAdapter {
-  id: string;                      // 平台唯一ID标识（如 'toutiao'）
-  name: string;                    // 平台中文名称（如 '今日头条'）
-  icon: string;                    // 平台专用 Emoji 图标（如 '📰'）
-  
-  // 1. 内容智能适配转换核心函数
-  transformContent(raw: RawContent): AdaptedContent;
-  
-  // 2. 格式校验合规性防御函数
-  validateContent(content: AdaptedContent): ValidationResult;
-  
-  // 3. 发布函数（支持 Mock 模拟发布与对接真实 API 接口）
-  publish(content: AdaptedContent): Promise<PublishResult>;
-  
-  // 4. 前端预览卡片的 HTML 渲染骨架生成函数
-  getPreviewHTML(content: AdaptedContent): string;
-}
-```
-
-#### 新增第五平台（头条号）的极速开发路径：
-1. **新建适配器**：在 `src/js/` 目录下新建 `toutiao.adapter.js`，实现 `PlatformAdapter` 接口规范。
-2. **注册到映射表**：在 `adapters.js` 中将新适配器挂载至 `adapterMap.toutiao = adaptToToutiao`。
-3. **安装 API Skill**：在 antigravity 平台上搜索并安装对应的 API 发送技能，调用其接口，无缝完成从零到一的极速分发扩展！
-
-### 13.3 核心数据交互协议 (JSON Schema)
-
-#### 1. 统一输入规范 (RawContent JSON)
-```json
-{
-  "title": "高效学习方法：如何用费曼技巧提升理解力",
-  "body": "费曼学习法是诺贝尔物理学奖得主理查德·费曼提出的学习方法。它的核心理念是...",
-  "images": [
-    "https://cdn.creatorbridge.qiniu.com/raw_pic_1.png",
-    "https://cdn.creatorbridge.qiniu.com/raw_pic_2.png"
-  ],
-  "tags": ["学习方法", "费曼技巧", "效率提升"],
-  "targetPlatforms": ["wechat", "zhihu", "bilibili", "xiaohongshu"]
-}
-```
-
-#### 2. 统一输出报告规范 (PublishReport JSON)
-```json
-{
-  "batchId": "PUB-20260529-001",
-  "timestamp": "2026-05-29T14:00:00Z",
-  "title": "高效学习方法：如何用费曼技巧提升理解力",
-  "mode": "mock",
-  "status": "success",
-  "results": [
-    { "platform": "wechat", "status": "success", "message": "模拟发布成功" },
-    { "platform": "zhihu", "status": "success", "message": "模拟发布成功" },
-    { "platform": "bilibili", "status": "success", "message": "模拟发布成功" },
-    { "platform": "xiaohongshu", "status": "success", "message": "模拟发布成功" }
-  ]
-}
-```
-
-### 13.4 antigravity 专属平台的 Skills 推荐搜索与对接建议
-
-本系统所有底层的 JS 模块均在 `window.Adapters` 作用域下，前瞻性地为以下 3 个 antigravity 市场技能预留了调用接口和钩子设计：
-
-| 推荐搜索的 Skill 关键词 | 系统已预留的 API 钩子函数 | 调用与集成场景说明 |
-| :--- | :--- | :--- |
-| **`web fetch`** / **`url scraper`** | `fetchAndParseExternalArticle(url)` | 传入已有文章 URL，调用该技能抓取并降级解析为统一输入源 |
-| **`llm rewrite`** / **`text transform`** | `aiStyleRewrite(content, platform)` | 调用大模型针对公众号分段、知乎问答、小红书 Emoji 口语化进行智能改写 |
-| **`image resize`** / **`image compress`** | `processAndUploadMedia(path, platform)`| 调用七牛云图片处理服务对素材图进行 900x383 等最佳比例裁剪与压缩 |
-| **`clipboard`** | `Utils.copyToClipboard(text)` | 一键式原生 Clipboard 复制到系统剪贴板 |
-
-> 💡 **开发者友情提示**：若在训练营 Skills 市场搜不到特定官方 Skill，可在系统的接口骨架中直接用原生 JavaScript 代码进行功能节点自实现，系统已完美预留好接收 Hooks，具备极佳的自闭环健壮度。
+1. **步骤一：平台参数定义**
+   在 `platforms.js` 中新增平台的基础定义（配置配色、最大字数限制、专区图标及名称等元数据）。
+2. **步骤二：适配算法挂载**
+   在 `adapters.js` 中新增适配规则函数 `adaptToWeibo(unified)`，处理微博短正文及特定 `@` 提及机制，并注册到 `adapterMap.weibo` 中。
+3. **步骤三：校验机制补充**
+   在 `validator.js` 中补充对应的特定校验规则（如微博限制 140 字，生成 warning）。
+4. **步骤四：发布端点扩充（计划实现）**
+   在 `publisher.js` 的 `PublishPayload` targets 字段中增加新平台的适配对象，在自建后端服务中增加针对 `/api/publish/weibo` 路由的官方接口请求分发逻辑。
+5. **步骤五：UI 自动响应**
+   前端的平台多选框、预览卡片以及历史记录会自动渲染微博对象，主流程 `main.js` 无需进行任何代码修改。
 
 ---
 
-## 参考与调研说明
+## 7. 异常情况处理
 
-本项目平台适配规则根据各平台常见发布习惯整理，不声称完全等同官方最新限制。技术实现基于 MDN 官方文档（localStorage、Clipboard API、Blob API）。项目结构和交互思路参考了开源社区的多平台发布工具设计，未复制任何第三方项目代码。
+| 异常场景 | 处理策略与机制 |
+|----------|----------------|
+| 标题/正文为空 | 显示 error 级别警示，阻止一键适配与发布 |
+| 未配置自定义连接器 API | 在计划实现之 Connector 模式下，提示“当前未配置连接器，已自动使用模拟发布” |
+| 自建后端跨域（CORS）限制 | 在计划实现中支持捕获 fetch 异常，指导用户检查后端跨域头配置 |
+| 本地存储 localStorage 不可用 | 捕获异常，将发布历史暂存于内存变量中，进行降级运行 |
+| 敏感 Token 泄露防御 | Token 默认使用密码属性输入，坚决不存入本地存储，刷新即完全丢弃 |
