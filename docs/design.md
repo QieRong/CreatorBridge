@@ -128,21 +128,19 @@ const adaptedContent = {
 }
 ```
 
-### 3.4 ConnectorConfig（连接器配置模型 - 已完成挂载，设计预留）
-用于前端本地暂存的连接器配置模型。为确保密钥安全性，Token 不进入持久化数据结构，亦不作为持久化字段留存，仅在运行时作为临时变量使用。
-* **字段约定**：
+### 3.4 ConnectorConfig（连接器配置模型 - 设计预留说明）
+用于说明未来连接器配置的数据结构模型。为确保密钥安全性，本阶段不保存 API Base URL 到 localStorage，亦不提供 Token、Cookie、AppSecret、账号密码等敏感凭证的输入框。
+* **设计字段预留约定**：
 ```javascript
 const connectorConfig = {
   mode: "mock",           // mock | connector | payload
-  apiBaseUrl: "",        // 自建中转 API 的基础地址
-  authType: "none",      // none (无鉴权) | bearer (Bearer Token) | custom (自定义)
-  customHeaders: {},     // 自定义请求头参数
-  saveCredential: false, // 是否保存配置（仅允许保存 apiBaseUrl, authType, platformMapping 等非敏感参数）
+  apiBaseUrl: "",        // 自建中转 API 的基础地址预留
+  authType: "none",      // none (无鉴权) | bearer (Bearer Token) | custom (自定义) 只作设计说明
   platformMapping: {
-    wechat: { enabled: false, endpoint: "/publish/wechat", publishType: "draft" },
-    zhihu: { enabled: false, endpoint: "/publish/zhihu", publishType: "draft" },
-    bilibili: { enabled: false, endpoint: "/publish/bilibili", publishType: "article" },
-    xiaohongshu: { enabled: false, endpoint: "/publish/xiaohongshu", publishType: "note" }
+    wechat: { enabled: false, endpoint: "/publish/wechat" },
+    zhihu: { enabled: false, endpoint: "/publish/zhihu" },
+    bilibili: { enabled: false, endpoint: "/publish/bilibili" },
+    xiaohongshu: { enabled: false, endpoint: "/publish/xiaohongshu" }
   }
 };
 ```
@@ -157,15 +155,16 @@ const connectorConfig = {
 * **职责**：纯本地运行的业务流程闭环。
 * **实现逻辑**：当前已支持。点击发布后，跳过任何网络请求，自动生成唯一的发布批次号与当前服务器时间，将各平台状态置为“模拟发布成功”，并将结果以 `mode: 'mock'` 记录于本地的 localStorage 历史记录中，供创作者演示完整的内容适配和发布链路。
 
-### 4.2 CustomConnectorPublisher（自定义连接器发布器 - 已完成底层预留）
-* **职责**：面向“接口预留型”真实发布中转扩展。
-* **实现逻辑**：
-  1. 创作者在配置栏中填写自建的后端 API 接口基础地址及鉴权凭证。
-  2. 点击发布时，调度器自动组装 `PublishPayload`。
-  3. 预留通过 `fetch POST` 请求将标准载荷推送到创作者自建中转服务的能力。
-  4. 支持捕获网络超时与 CORS（跨域）拦截，提供对本地开发跨域调试的指南。
-  5. 不管请求成功或失败，均会将事件登记于发布历史中，并标记为 `mode: 'connector'` 以供核对。
-  6. 当前阶段作为结构与分发能力预留，不向 localStorage 写入任何敏感字段。
+### 4.2 CustomConnectorPublisher（自定义连接器模式 - 预留说明）
+* **职责**：面向“接口预留型”真实发布中转扩展的设计说明与配置界面展示。
+* **边界与实现限制**：
+  1. 当前前端项目不内置微信、知乎、B站、小红书真实发布接口。
+  2. Connector 模式当前只展示配置入口和说明。
+  3. API Base URL 输入框本阶段不保存到 localStorage。
+  4. 当前阶段不发起 fetch、XMLHttpRequest 或其他真实网络请求。
+  5. 真实发布需要用户自建后端中转服务，并取得对应平台授权和接口权限。
+  6. 不提供 Token、Cookie、AppSecret、账号密码输入框，避免在前端保存敏感凭证。
+  7. 切换到 Connector 模式不会影响现有的 Mock 模拟发布主干流程。
 
 ### 4.3 PlatformPublisherPlaceholder（平台官方接口占位器 - 计划实现）
 * **职责**：在系统底层针对未来直接扩展官方真实发布接口预留扩展骨架。
