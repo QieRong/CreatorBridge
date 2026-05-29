@@ -151,11 +151,197 @@
     return text;
   }
 
+  /**
+   * 规范化发布模式
+   * 只允许返回 'mock', 'connector', 'payload'，其他一律兜底返回 'mock'
+   *
+   * @param {string} mode - 待验证的模式
+   * @returns {string} 规范化后的模式
+   */
+  function normalizePublishMode(mode) {
+    var m = (mode != null) ? String(mode).trim().toLowerCase() : 'mock';
+    if (m === 'mock' || m === 'connector' || m === 'payload') {
+      return m;
+    }
+    return 'mock';
+  }
+
+  /**
+   * 创建默认的连接器配置对象（ConnectorConfig）
+   * 为扩展发布模式设计预留，不包含敏感凭证字段。
+   *
+   * @param {object} options - 用于覆盖非敏感默认配置的可选参数
+   * @returns {object} 连接器配置对象
+   */
+  function createConnectorConfig(options) {
+    var defaultPlatformMapping = {
+      wechat: { enabled: false, endpoint: '/publish/wechat', publishType: 'draft' },
+      zhihu: { enabled: false, endpoint: '/publish/zhihu', publishType: 'draft' },
+      bilibili: { enabled: false, endpoint: '/publish/bilibili', publishType: 'article' },
+      xiaohongshu: { enabled: false, endpoint: '/publish/xiaohongshu', publishType: 'note' }
+    };
+
+    var config = {
+      mode: 'mock',
+      apiBaseUrl: '',
+      authType: 'none',
+      customHeaders: {},
+      saveCredential: false,
+      platformMapping: defaultPlatformMapping
+    };
+
+    if (options != null && typeof options === 'object') {
+      // 安全覆盖 mode
+      if (options.mode !== undefined) {
+        config.mode = normalizePublishMode(options.mode);
+      }
+      // 安全覆盖 apiBaseUrl (必须是字符串)
+      if (options.apiBaseUrl !== undefined) {
+        config.apiBaseUrl = String(options.apiBaseUrl);
+      }
+      // 安全覆盖 authType
+      if (options.authType !== undefined) {
+        config.authType = String(options.authType);
+      }
+      // 安全覆盖 customHeaders (必须是对象)
+      if (options.customHeaders != null && typeof options.customHeaders === 'object') {
+        config.customHeaders = {};
+        for (var key in options.customHeaders) {
+          if (Object.prototype.hasOwnProperty.call(options.customHeaders, key)) {
+            config.customHeaders[key] = String(options.customHeaders[key]);
+          }
+        }
+      }
+      // 安全覆盖 saveCredential
+      if (options.saveCredential !== undefined) {
+        config.saveCredential = Boolean(options.saveCredential);
+      }
+      // 安全覆盖 platformMapping
+      if (options.platformMapping != null && typeof options.platformMapping === 'object') {
+        config.platformMapping = {};
+        var platforms = ['wechat', 'zhihu', 'bilibili', 'xiaohongshu'];
+        platforms.forEach(function (platform) {
+          var defaultItem = defaultPlatformMapping[platform];
+          var optItem = options.platformMapping[platform];
+          if (optItem != null && typeof optItem === 'object') {
+            config.platformMapping[platform] = {
+              enabled: optItem.enabled !== undefined ? Boolean(optItem.enabled) : defaultItem.enabled,
+              endpoint: optItem.endpoint !== undefined ? String(optItem.endpoint) : defaultItem.endpoint,
+              publishType: optItem.publishType !== undefined ? String(optItem.publishType) : defaultItem.publishType
+            };
+          } else {
+            config.platformMapping[platform] = defaultItem;
+          }
+        });
+      }
+    }
+
+    return config;
+  }
+
+  /**
+   * 内部方法：生成唯一的发布批次号
+   * 格式：PUB-YYYYMMDD-XXX
+   * @returns {string} 批次号
+   */
+  function generateLocalBatchId() {
+    var now = new Date();
+    var dateStr = now.getFullYear().toString() +
+      String(now.getMonth() + 1).padStart(2, '0') +
+      String(now.getDate()).padStart(2, '0');
+    var seq = String(Math.floor(Math.random() * 900) + 100);
+    return 'PUB-' + dateStr + '-' + seq;
+  }
+
+  /**
+   * 创建统一发布载荷对象（PublishPayload）
+   * 为自定义中转服务和导出模式设计预留，不包含敏感身份凭证。
+   *
+   * @param {object} unifiedContent - 统一内容数据对象，可为空
+   * @param {Array} adaptedContents - 各平台适配后的内容数组，可为空
+   * @param {string} mode - 发布模式 (mock | connector | payload)
+   * @param {object} options - 可选配置覆盖参数
+   * @returns {object} 发布载荷对象
+   */
+  function createPublishPayload(unifiedContent, adaptedContents, mode, options) {
+    var safeMode = normalizePublishMode(mode);
+    var now = new Date().toLocaleString('zh-CN');
+
+    // 1. 组装 source 原始信息
+    var sourceData = {
+      contentId: '',
+      title: '',
+      tags: [],
+      createdAt: ''
+    };
+    if (unifiedContent != null && typeof unifiedContent === 'object') {
+      sourceData.contentId = (unifiedContent.id != null) ? String(unifiedContent.id) : '';
+      sourceData.title = (unifiedContent.title != null) ? String(unifiedContent.title) : '';
+      if (Array.isArray(unifiedContent.tags)) {
+        sourceData.tags = unifiedContent.tags.filter(function (t) { return t != null; }).map(String);
+      }
+      if (unifiedContent.metadata != null && typeof unifiedContent.metadata === 'object') {
+        sourceData.createdAt = (unifiedContent.metadata.createdAt != null) ? String(unifiedContent.metadata.createdAt) : '';
+      }
+    }
+
+    // 2. 组装 targets 适配后信息，去除无关敏感字段
+    var targetList = [];
+    if (Array.isArray(adaptedContents)) {
+      targetList = adaptedContents.map(function (item) {
+        if (item == null || typeof item !== 'object') {
+          return null;
+        }
+        return {
+          platformId: (item.platformId != null) ? String(item.platformId) : '',
+          platformName: (item.platformName != null) ? String(item.platformName) : '',
+          title: (item.title != null) ? String(item.title) : '',
+          body: (item.body != null) ? String(item.body) : '',
+          tags: Array.isArray(item.tags) ? item.tags.filter(function (t) { return t != null; }).map(String) : [],
+          formatType: (item.formatType != null) ? String(item.formatType) : 'text-preview',
+          media: Array.isArray(item.media) ? item.media : [],
+          tips: Array.isArray(item.tips) ? item.tips.filter(function (t) { return t != null; }).map(String) : [],
+          warnings: Array.isArray(item.warnings) ? item.warnings.filter(function (w) { return w != null; }).map(String) : []
+        };
+      }).filter(function (t) { return t != null; });
+    }
+
+    // 3. 组装 options 发布选项
+    var publishOptions = {
+      dryRun: true,
+      publishNow: false,
+      saveAsDraft: true
+    };
+    if (options != null && typeof options === 'object') {
+      if (options.dryRun !== undefined) {
+        publishOptions.dryRun = Boolean(options.dryRun);
+      }
+      if (options.publishNow !== undefined) {
+        publishOptions.publishNow = Boolean(options.publishNow);
+      }
+      if (options.saveAsDraft !== undefined) {
+        publishOptions.saveAsDraft = Boolean(options.saveAsDraft);
+      }
+    }
+
+    return {
+      batchId: generateLocalBatchId(),
+      mode: safeMode,
+      source: sourceData,
+      targets: targetList,
+      options: publishOptions,
+      createdAt: now
+    };
+  }
+
   // 挂载到全局对象
   window.Models = {
     createUnifiedContent: createUnifiedContent,
     createAdaptedContent: createAdaptedContent,
     createPublishResult: createPublishResult,
-    normalizeContent: normalizeContent
+    normalizeContent: normalizeContent,
+    normalizePublishMode: normalizePublishMode,
+    createConnectorConfig: createConnectorConfig,
+    createPublishPayload: createPublishPayload
   };
 })();
