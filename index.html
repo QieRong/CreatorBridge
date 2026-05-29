@@ -114,6 +114,23 @@
         </div>
       </section>
 
+      <!-- ===== 新增栏：Payload JSON 载荷预览区 ===== -->
+      <section class="section section-payload" id="section-payload">
+        <div class="section-header">
+          <h2 class="section-title">📦 统一发布载荷 (PublishPayload)</h2>
+          <p class="section-desc">查看一键适配生成的标准 JSON 载荷数据，支持导出及外部服务对接</p>
+        </div>
+        <div class="card">
+          <div class="payload-actions">
+            <button class="btn btn-primary" id="btn-copy-payload" title="复制格式化 JSON 载荷" disabled>📋 复制 Payload</button>
+            <button class="btn btn-success" id="btn-export-payload" title="导出 JSON 文本文件" disabled>💾 导出 Payload JSON</button>
+          </div>
+          <div class="payload-preview-container">
+            <pre class="payload-pre"><code id="payload-code">请先完成一键适配，以生成标准发布载荷。</code></pre>
+          </div>
+        </div>
+      </section>
+
       <!-- ===== 第五栏：模拟发布结果区 ===== -->
       <section class="section section-publish-result" id="section-publish-result" style="display: none;">
         <div class="section-header">

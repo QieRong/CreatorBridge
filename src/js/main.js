@@ -30,7 +30,8 @@
     unifiedContent: null,
     adaptedContents: [],
     validationMessages: [],
-    lastPublishResult: null
+    lastPublishResult: null,
+    unifiedPayload: null // 新增：保存当前生成的发布载荷数据
   };
 
   // ========== 初始化 ==========
@@ -59,6 +60,11 @@
     DOM.historyList = document.getElementById('history-list');
     DOM.historyEmpty = document.getElementById('history-empty');
     DOM.toastContainer = document.getElementById('toast-container');
+
+    // 新增：载荷区相关 DOM 节点缓存
+    DOM.btnCopyPayload = document.getElementById('btn-copy-payload');
+    DOM.btnExportPayload = document.getElementById('btn-export-payload');
+    DOM.payloadCode = document.getElementById('payload-code');
   }
 
   /** 渲染平台选择器 */
@@ -149,6 +155,12 @@
       if (DOM.btnPublish) DOM.btnPublish.disabled = true;
       if (DOM.btnExport) DOM.btnExport.disabled = true;
 
+      // 新增：重置载荷区状态
+      if (DOM.btnCopyPayload) DOM.btnCopyPayload.disabled = true;
+      if (DOM.btnExportPayload) DOM.btnExportPayload.disabled = true;
+      if (DOM.payloadCode) DOM.payloadCode.textContent = '请先完成一键适配，以生成标准发布载荷。';
+      state.unifiedPayload = null;
+
       showToast('已清空所有输入内容', 'info');
     });
   }
@@ -219,6 +231,20 @@
     // 启用发布和导出按钮
     if (DOM.btnPublish) DOM.btnPublish.disabled = false;
     if (DOM.btnExport) DOM.btnExport.disabled = false;
+
+    // 新增：构建标准统一发布载荷 (PublishPayload) 并渲染
+    if (Publisher && Publisher.buildPublishPayload) {
+      state.unifiedPayload = Publisher.buildPublishPayload(state.unifiedContent, state.adaptedContents, 'payload') || null;
+    }
+    if (state.unifiedPayload && DOM.payloadCode) {
+      DOM.payloadCode.textContent = JSON.stringify(state.unifiedPayload, null, 2);
+      if (DOM.btnCopyPayload) DOM.btnCopyPayload.disabled = false;
+      if (DOM.btnExportPayload) DOM.btnExportPayload.disabled = false;
+    } else {
+      if (DOM.payloadCode) DOM.payloadCode.textContent = '载荷生成失败，请重试。';
+      if (DOM.btnCopyPayload) DOM.btnCopyPayload.disabled = true;
+      if (DOM.btnExportPayload) DOM.btnExportPayload.disabled = true;
+    }
 
     showToast('已成功适配 ' + state.adaptedContents.length + ' 个平台', 'success');
 
@@ -567,6 +593,66 @@
     showToast('内容已导出为 ' + filename, 'success');
   }
 
+  // ========== Payload 载荷交互 ==========
+
+  /** 处理复制 Payload JSON */
+  function handleCopyPayload() {
+    if (!state.unifiedPayload) {
+      showToast('无可用载荷数据', 'warning');
+      return;
+    }
+    var jsonText = JSON.stringify(state.unifiedPayload, null, 2);
+    var copyPromise = Utils?.copyToClipboard(jsonText);
+    if (copyPromise && typeof copyPromise.then === 'function') {
+      copyPromise.then(function () {
+        showToast('发布载荷 JSON 已复制到剪贴板', 'success');
+        if (DOM.btnCopyPayload) {
+          DOM.btnCopyPayload.innerHTML = '✅ 已复制';
+          setTimeout(function () {
+            DOM.btnCopyPayload.innerHTML = '📋 复制 Payload';
+          }, 2000);
+        }
+      }).catch(function () {
+        showToast('复制失败，请手动选择复制', 'error');
+      });
+    } else {
+      showToast('当前浏览器不支持自动复制，请手动复制', 'warning');
+    }
+  }
+
+  /** 处理导出 Payload JSON */
+  function handleExportPayload() {
+    if (!state.unifiedPayload) {
+      showToast('无可用载荷数据', 'warning');
+      return;
+    }
+    var jsonText = JSON.stringify(state.unifiedPayload, null, 2);
+    
+    // 格式化时间戳 YYYYMMDD-HHMMSS
+    var now = new Date();
+    var year = now.getFullYear();
+    var month = String(now.getMonth() + 1).padStart(2, '0');
+    var date = String(now.getDate()).padStart(2, '0');
+    var hours = String(now.getHours()).padStart(2, '0');
+    var minutes = String(now.getMinutes()).padStart(2, '0');
+    var seconds = String(now.getSeconds()).padStart(2, '0');
+    var timestamp = year + month + date + '-' + hours + minutes + seconds;
+    
+    var filename = 'creatorbridge-payload-' + timestamp + '.json';
+    Utils?.downloadTextFile(filename, jsonText);
+    showToast('载荷已成功导出为 ' + filename, 'success');
+  }
+
+  /** 绑定 Payload 相关交互事件 */
+  function bindPayloadEvents() {
+    if (DOM.btnCopyPayload) {
+      DOM.btnCopyPayload.addEventListener('click', handleCopyPayload);
+    }
+    if (DOM.btnExportPayload) {
+      DOM.btnExportPayload.addEventListener('click', handleExportPayload);
+    }
+  }
+
   // ========== 清空历史 ==========
 
   /** 绑定清空历史按钮 */
@@ -624,6 +710,7 @@
     bindPublishButton();
     bindExportButton();
     bindClearHistoryButton();
+    bindPayloadEvents(); // 新增：绑定载荷交互事件
     renderHistory();
     console.log('CreatorBridge 初始化完成 ✓');
   }
