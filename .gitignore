@@ -12,8 +12,10 @@ desktop.ini
 *.swp
 *.swo
 
-# Agent 配置（可选是否提交）
+# Agent 配置与工具链锁定文件
 .agent/
+.agents/
+skills-lock.json
 
 # 环境变量
 .env
