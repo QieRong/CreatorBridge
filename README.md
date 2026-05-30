@@ -235,6 +235,9 @@ npm run dist
 ```
 * 构建成功后，项目根目录下的 `dist/` 文件夹中将生成免安装版的 `CreatorBridge Setup 1.0.0.exe` 以及绿色解压即开版。
 
+### 📦 Release 下载入口
+如果不希望在本地运行源码，您可以直接前往 **[GitHub Releases](https://github.com/QieRong/CreatorBridge/releases)** 下载最新版打包好的 Windows `.exe` 安装程序，下载后双击即可使用。
+
 ## 使用说明
 
 1. 在输入区填写文章标题、正文、标签。
