@@ -332,13 +332,76 @@
   }
 
   /**
+   * 微博适配器
+   * 风格：短平快，带有明显的微博话题格式，字数较少
+   * @param {Object} unified - 统一内容模型
+   * @returns {Object} 适配后的内容
+   */
+  function adaptToWeibo(unified) {
+    var title = unified.title || '';
+    var body = unified.body || '';
+    var tags = unified.tags || [];
+
+    // 微博没有单独的标题字段，通常把标题放在正文最前面，用【】括起来
+    var adaptedTitle = '';
+    var adaptedBody = '';
+
+    if (title) {
+      adaptedBody += '【' + title + '】\n';
+    }
+
+    // 正文转化：精简、保留核心信息
+    // 如果太长则截断，留出话题空间
+    var bodyLengthLimit = 130; 
+    var truncatedBody = Utils.truncateText(body, bodyLengthLimit);
+    if (body.length > bodyLengthLimit) {
+      truncatedBody += '... (点击长文查看全文)\n';
+    } else {
+      truncatedBody += '\n';
+    }
+    adaptedBody += truncatedBody;
+
+    // 标签处理：微博标准的话题格式是 #话题#
+    var adaptedTags = tags.slice(0, 5).map(function (tag) {
+      return '#' + tag + '#';
+    });
+
+    if (adaptedTags.length > 0) {
+      adaptedBody += '\n' + adaptedTags.join(' ');
+    }
+
+    var tips = [
+      '微博更适合短平快的碎片化信息表达',
+      '带上热门 #话题# 能有效增加曝光',
+      '如果有长篇大论，建议配上长图发布'
+    ];
+
+    var warnings = [];
+    if (Utils.countTextLength(body) > 140) {
+      warnings.push('正文长度超过140字，可能需要发长图或头条文章');
+    }
+
+    return Models.createAdaptedContent(
+      'weibo',
+      '微博',
+      adaptedTitle,
+      adaptedBody.trim(),
+      adaptedTags,
+      tips,
+      warnings,
+      Utils.countTextLength(adaptedBody)
+    );
+  }
+
+  /**
    * 适配器注册表 —— 新增平台只需在此注册
    */
   var adapterMap = {
     wechat: adaptToWechat,
     zhihu: adaptToZhihu,
     bilibili: adaptToBilibili,
-    xiaohongshu: adaptToXiaohongshu
+    xiaohongshu: adaptToXiaohongshu,
+    weibo: adaptToWeibo
   };
 
   /**

@@ -145,6 +145,18 @@
             '小红书建议至少添加 1 个话题标签以获取系统流量推荐。', '小红书'));
         }
       }
+
+      // 微博校验
+      if (content.platformId === 'weibo') {
+        if (bodyLen > 1500) {
+          messages.push(buildValidationMessage('warning',
+            '微博正文较长（' + bodyLen + '字），可能需要作为头条文章或长图发布。', '微博'));
+        }
+        if (tagCount > 5) {
+          messages.push(buildValidationMessage('warning',
+            '微博话题标签建议不要超过5个，当前 ' + tagCount + ' 个，过多可能影响阅读体验。', '微博'));
+        }
+      }
     });
 
     // 如果没有任何问题，给一个成功提示
