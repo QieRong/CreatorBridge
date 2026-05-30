@@ -34,11 +34,11 @@
    * @param {string} title - 标题
    * @param {string} body - 正文
    * @param {string} tags - 标签字符串
-   * @param {string} media - 素材链接
+   * @param {Array} mediaAssets - 素材资源数组
    * @param {Array} selectedPlatforms - 选中的平台ID数组
    * @returns {Array} 校验消息数组
    */
-  function validateRawContent(title, body, tags, media, selectedPlatforms) {
+  function validateRawContent(title, body, tags, mediaAssets, selectedPlatforms) {
     var messages = [];
 
     // 通用校验：标题为空
@@ -69,9 +69,23 @@
       }
     }
 
-    // 素材链接为空提醒
-    if (!media || media.trim() === '') {
+    var imageCount = 0;
+    var hasVideo = false;
+    if (mediaAssets && Array.isArray(mediaAssets)) {
+      mediaAssets.forEach(function(m) {
+        if (m.category === 'image') imageCount++;
+        if (m.category === 'video') hasVideo = true;
+      });
+    }
+
+    // 素材为空提醒
+    if (imageCount === 0 && !hasVideo) {
       messages.push(buildValidationMessage('info', '未填写素材链接或备注。添加配图素材可以提升各平台的展示效果。'));
+    }
+
+    // B站图片数量限制
+    if (imageCount > 9 && selectedPlatforms && selectedPlatforms.includes('bilibili')) {
+      messages.push(buildValidationMessage('error', '适配失败：B站动态最多支持 9 张图片，请删减图片或取消勾选 B站。'));
     }
 
     return messages;

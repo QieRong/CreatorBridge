@@ -50,8 +50,11 @@
 
   var queueState = {
     batchId: null,
+    payload: null,
     tasks: [],
     isRunning: false,
+    mode: 'mock',
+    connectorConfig: { baseUrl: '', token: '' },
     onProgress: null,
     onComplete: null
   };
@@ -63,11 +66,14 @@
    * @param {Function} onComplete - 完成回调 (batchId, tasks) => void
    * @returns {boolean} 是否创建成功
    */
-  function createTaskQueue(payload, onProgress, onComplete) {
+  function createTaskQueue(payload, onProgress, onComplete, mode, baseUrl, token) {
     if (!payload || !payload.targets || payload.targets.length === 0) return false;
     
     queueState.batchId = payload.batchId;
+    queueState.payload = payload;
     queueState.isRunning = false;
+    queueState.mode = mode || 'mock';
+    queueState.connectorConfig = { baseUrl: baseUrl || '', token: token || '' };
     queueState.onProgress = onProgress;
     queueState.onComplete = onComplete;
     
@@ -162,6 +168,91 @@
     processNext();
   }
 
+  /**
+   * 将载荷投递给自建连接器
+   */
+  async function sendToConnector(platformId, payload, baseUrl, token) {
+    var url = baseUrl.replace(/\/$/, '') + '/api/publish/' + platformId;
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 15000); // 15秒超时
+
+    try {
+      var headers = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = 'Bearer ' + token;
+      }
+
+      var response = await fetch(url, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        if (response.status === 401) throw new Error('Token 无效/过期 (401)');
+        if (response.status === 500) throw new Error('连接器服务端异常 (500)');
+        throw new Error('HTTP ' + response.status);
+      }
+
+      var result = await response.json();
+      if (result && result.success === false) {
+        throw new Error(result.message || '连接器返回失败状态');
+      }
+
+      return { status: 'success', message: '连接器已接收任务' };
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        return { status: 'failed', message: '请求超时 (15s)' };
+      }
+      return { status: 'failed', message: error.message || '网络连接异常' };
+    }
+  }
+
+  /** 开始执行真实的连接器投递队列 */
+  async function runConnectorQueue() {
+    if (queueState.isRunning || queueState.tasks.length === 0) return;
+    queueState.isRunning = true;
+    
+    var baseUrl = queueState.connectorConfig.baseUrl;
+    var token = queueState.connectorConfig.token;
+
+    for (var i = 0; i < queueState.tasks.length; i++) {
+      var task = queueState.tasks[i];
+      if (task.status === 'success' || task.status === 'publishing') continue;
+      
+      updateTaskStatus(task.taskId, 'publishing', '正在投递中...');
+      
+      var res = await sendToConnector(task.platformId, queueState.payload, baseUrl, token);
+      
+      if (res.status === 'success') {
+        updateTaskStatus(task.taskId, 'success', res.message);
+      } else {
+        task.retryCount++;
+        updateTaskStatus(task.taskId, 'failed', res.message);
+      }
+    }
+    
+    queueState.isRunning = false;
+    if (typeof queueState.onComplete === 'function') {
+      queueState.onComplete(queueState.batchId, queueState.tasks);
+    }
+  }
+
+  /** 智能分发执行入口 */
+  function executeQueue() {
+    if (queueState.mode === 'connector') {
+      runConnectorQueue();
+    } else {
+      runQueue();
+    }
+  }
+
   /** 重试指定失败任务 */
   function retryTask(taskId) {
     var task = null;
@@ -177,7 +268,7 @@
       if (typeof queueState.onProgress === 'function') {
         queueState.onProgress(queueState.tasks);
       }
-      runQueue();
+      executeQueue();
     }
   }
 
@@ -393,20 +484,6 @@
     return publisher.publish(payload);
   }
 
-  // 全局挂载
-  window.Publisher = {
-    createBatchId: createBatchId,
-    createPlatformPublishResult: createPlatformPublishResult,
-    mockPublish: mockPublish,
-      batchId: batchId,
-      title: title || '无标题',
-      mode: 'mock',
-      status: 'success',
-      publishedAt: new Date().toLocaleString('zh-CN'),
-      platforms: platformResults
-    };
-  }
-
   /**
    * MockPublisher 本地模拟发布器
    * 负责纯本地的模拟发布逻辑，支持向下兼容旧流程。
@@ -601,6 +678,9 @@
     buildPublishPayload: buildPublishPayload,
     createTaskQueue: createTaskQueue,
     runQueue: runQueue,
+    runConnectorQueue: runConnectorQueue,
+    executeQueue: executeQueue,
+    sendToConnector: sendToConnector,
     retryTask: retryTask,
     getTasks: function() { return queueState.tasks; }
   };

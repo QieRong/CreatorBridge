@@ -25,7 +25,18 @@
     validationMessages: [],
     unifiedPayload: null,
     mediaAssets: [],
-    activeTabPlatformId: null
+    activeTabPlatformId: null,
+    connectorConfig: { enabled: false, baseUrl: '' },
+    runtimeToken: ''
+  };
+
+  var PLATFORM_ICONS = {
+    'wechat': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 10C17 7.23858 14.7614 5 12 5C9.23858 5 7 7.23858 7 10C7 12.7614 9.23858 15 12 15C13.0673 15 14.0567 14.6656 14.8697 14.0934L17.5 15.5L16.7118 13.1362C16.9015 12.1931 17 11.1444 17 10Z"></path><path d="M22 15C22 12.7909 20.2091 11 18 11C15.7909 11 14 12.7909 14 15C14 17.2091 15.7909 19 18 19C18.8525 19 19.642 18.7324 20.2926 18.2747L22.3995 19.3995L21.7686 17.5057C21.9198 16.751 22 15.9189 22 15Z"></path></svg>',
+    'zhihu': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M9 11h6"></path></svg>',
+    'bilibili': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="12" rx="2"></rect><path d="M8 3l3 4M16 3l-3 4M9 12h.01M15 12h.01"></path></svg>',
+    'xiaohongshu': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21a9 9 0 100-18 9 9 0 000 18z"></path><path d="M12 8v8M9 11l3 3 3-3"></path></svg>',
+    'weibo': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"></path></svg>',
+    'default': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>'
   };
 
   /** 缓存 DOM 元素引用 */
@@ -57,6 +68,9 @@
     DOM.platformTabs = document.getElementById('platform-tabs');
     DOM.tabContentArea = document.getElementById('tab-content-area');
     DOM.previewEmpty = document.getElementById('preview-empty');
+    DOM.btnFillDemo = document.getElementById('btn-fill-demo');
+    DOM.btnViewConnector = document.getElementById('btn-view-connector');
+    DOM.stepIndicator = document.getElementById('step-indicator');
 
     // Right Column
     DOM.queueList = document.getElementById('queue-list');
@@ -67,6 +81,73 @@
     DOM.historyEmpty = document.getElementById('history-empty');
 
     DOM.toastContainer = document.getElementById('toast-container');
+    
+    // Modal
+    DOM.btnSettings = document.getElementById('btn-settings');
+    DOM.modeBadge = document.getElementById('mode-badge');
+    DOM.connectorModal = document.getElementById('connector-modal');
+    DOM.btnCloseModal = document.getElementById('btn-close-modal');
+    DOM.toggleConnector = document.getElementById('toggle-connector');
+    DOM.inputBaseUrl = document.getElementById('input-base-url');
+    DOM.inputRuntimeToken = document.getElementById('input-runtime-token');
+    DOM.btnTestConnection = document.getElementById('btn-test-connection');
+    DOM.btnSaveSettings = document.getElementById('btn-save-settings');
+  }
+
+  function updateButtonStates() {
+    var title = DOM.inputTitle?.value?.trim() || '';
+    var body = DOM.inputBody?.value?.trim() || '';
+    var hasPlatform = state.selectedPlatforms.length > 0;
+    
+    // Update process indicator
+    if (DOM.stepIndicator) {
+      if (title && body) {
+        DOM.stepIndicator.textContent = '内容已填写';
+        DOM.stepIndicator.style.color = 'var(--color-success)';
+      } else {
+        DOM.stepIndicator.textContent = '步骤 1 / 3：编辑内容';
+        DOM.stepIndicator.style.color = 'var(--text-secondary)';
+      }
+    }
+
+    // Adapt Button
+    if (DOM.btnAdapt) {
+      if (title && body && hasPlatform) {
+        DOM.btnAdapt.disabled = false;
+        DOM.btnAdapt.title = '一键生成平台适配结果';
+      } else {
+        DOM.btnAdapt.disabled = true;
+        DOM.btnAdapt.title = '请先填写标题、正文并选择发布平台';
+      }
+    }
+
+    // Publish Button
+    if (DOM.btnPublish) {
+      var hasAdapted = state.adaptedContents && state.adaptedContents.length > 0;
+      if (hasAdapted) {
+        DOM.btnPublish.disabled = false;
+        DOM.btnPublish.title = '模拟发布到选中的平台';
+      } else {
+        DOM.btnPublish.disabled = true;
+        DOM.btnPublish.title = '请先完成一键适配';
+      }
+    }
+    
+    // Export Button
+    if (DOM.btnExportPkg) {
+      if (state.unifiedPayload) {
+        DOM.btnExportPkg.disabled = false;
+        DOM.btnExportPkg.title = '导出发布资料(含JSON)';
+      } else {
+        DOM.btnExportPkg.disabled = true;
+        DOM.btnExportPkg.title = '暂无可下载的发布资料';
+      }
+    }
+
+    // Copy Payload Button
+    if (DOM.btnCopyPayload) {
+      DOM.btnCopyPayload.disabled = !state.unifiedPayload;
+    }
   }
 
   // ========== 初始化渲染 ==========
@@ -77,13 +158,14 @@
 
     var html = '';
     platforms.forEach(function (p) {
+      var icon = PLATFORM_ICONS[p.id] || PLATFORM_ICONS['default'];
       html += '<label class="platform-item" data-platform-id="' + p.id + '">';
       html += '  <input type="checkbox" value="' + p.id + '" style="display:none">';
-      html += '  <span class="platform-check">✓</span>';
+      html += '  <div class="platform-icon">' + icon + '</div>';
       html += '  <div class="platform-info">';
       html += '    <div class="platform-name">' + p.name + '</div>';
-      html += '    <div class="platform-desc">' + (Utils?.escapeHTML(p.description) || p.description) + '</div>';
       html += '  </div>';
+      html += '  <div class="platform-check-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"></path></svg></div>';
       html += '</label>';
     });
     DOM.platformSelector.innerHTML = html;
@@ -93,18 +175,14 @@
 
   function bindPlatformEvents() {
     if (!DOM.platformSelector) return;
-    DOM.platformSelector.addEventListener('click', function (e) {
-      var item = e.target.closest('.platform-item');
-      if (!item) return;
-      var checkbox = item.querySelector('input[type="checkbox"]');
-      if (!checkbox) return;
-      
-      // Prevent double toggle if clicking the checkbox itself vs the label wrapper
-      if (e.target !== checkbox) {
-        checkbox.checked = !checkbox.checked;
+    DOM.platformSelector.addEventListener('change', function (e) {
+      if (e.target.type === 'checkbox') {
+        var item = e.target.closest('.platform-item');
+        if (item) {
+          item.classList.toggle('selected', e.target.checked);
+        }
+        updateSelectedPlatforms();
       }
-      item.classList.toggle('selected', checkbox.checked);
-      updateSelectedPlatforms();
     });
   }
 
@@ -117,12 +195,14 @@
     if (DOM.statPlatforms) {
       DOM.statPlatforms.textContent = state.selectedPlatforms.length;
     }
+    updateButtonStates();
   }
 
   function bindInputCounters() {
     if (DOM.inputTitle && DOM.titleCounter) {
       DOM.inputTitle.addEventListener('input', function () {
         DOM.titleCounter.textContent = DOM.inputTitle.value.length + ' / 100';
+        updateButtonStates();
       });
     }
     if (DOM.inputBody && DOM.bodyCounter) {
@@ -132,6 +212,7 @@
         if (DOM.readTime) {
           DOM.readTime.textContent = '预计阅读: ' + Math.ceil(len / 300) + ' 分钟';
         }
+        updateButtonStates();
       });
     }
   }
@@ -142,25 +223,85 @@
       var files = e.target.files;
       if (!files || files.length === 0) return;
 
-      for (var i = 0; i < files.length; i++) {
-        var file = files[i];
-        var previewUrl = '';
-        if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
-          previewUrl = URL.createObjectURL(file);
-        }
-        state.mediaAssets.push({
-          id: 'local-' + Date.now() + '-' + i,
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          category: file.type.startsWith('video/') ? 'video' : 'image',
-          source: 'local-preview',
-          previewUrl: previewUrl
-        });
+      var hasExistingVideo = state.mediaAssets.some(function(a) { return a.category === 'video'; });
+      var hasExistingImage = state.mediaAssets.some(function(a) { return a.category === 'image'; });
+      
+      var newVideoCount = 0;
+      var newImageCount = 0;
+      for (var k = 0; k < files.length; k++) {
+         if (files[k].type.startsWith('video/')) newVideoCount++;
+         if (files[k].type.startsWith('image/')) newImageCount++;
       }
+
+      // Rule 1: Video uniqueness and exclusion
+      if (newVideoCount > 0) {
+        if (newVideoCount > 1) {
+          showToast('每次只能上传 1 个视频，多余视频将被忽略', 'warning');
+        }
+        if (hasExistingImage || newImageCount > 0) {
+           showToast('图文与视频不可混发，已清空图片，仅保留视频', 'warning');
+        }
+        // Clear all
+        state.mediaAssets.forEach(function(a) { if(a.previewUrl) URL.revokeObjectURL(a.previewUrl); });
+        state.mediaAssets = [];
+        
+        // Find the first video
+        for (var i = 0; i < files.length; i++) {
+          if (files[i].type.startsWith('video/')) {
+            addFileToAssets(files[i], 'video', i);
+            break;
+          }
+        }
+      } 
+      // Rule 2: Image limit
+      else if (newImageCount > 0) {
+        if (hasExistingVideo) {
+           showToast('图文与视频不可混发，已清空原视频，仅保留图片', 'warning');
+           state.mediaAssets.forEach(function(a) { if(a.previewUrl) URL.revokeObjectURL(a.previewUrl); });
+           state.mediaAssets = [];
+        }
+        
+        var availableSlots = 18 - state.mediaAssets.length;
+        if (availableSlots <= 0) {
+          showToast('最多只能上传 18 张图片', 'error');
+          DOM.inputMedia.value = '';
+          return;
+        }
+
+        if (newImageCount > availableSlots) {
+           showToast('最多只能上传 18 张图片，超出的将被截断', 'warning');
+        }
+
+        var addedCount = 0;
+        for (var j = 0; j < files.length; j++) {
+          if (addedCount >= availableSlots) break;
+          if (files[j].type.startsWith('image/')) {
+            addFileToAssets(files[j], 'image', j);
+            addedCount++;
+          }
+        }
+      }
+
       renderMediaPreview();
       DOM.inputMedia.value = '';
       if (DOM.statMedia) DOM.statMedia.textContent = state.mediaAssets.length;
+      updateButtonStates();
+    });
+  }
+
+  function addFileToAssets(file, category, idx) {
+    var previewUrl = '';
+    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+      previewUrl = URL.createObjectURL(file);
+    }
+    state.mediaAssets.push({
+      id: 'local-' + Date.now() + '-' + idx,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      category: category,
+      source: 'local-preview',
+      previewUrl: previewUrl
     });
   }
 
@@ -232,24 +373,46 @@
     DOM.btnAdapt.addEventListener('click', handleAdapt);
   }
 
+  function bindDemoButton() {
+    if (DOM.btnFillDemo) {
+      DOM.btnFillDemo.addEventListener('click', function() {
+        if(DOM.inputTitle) DOM.inputTitle.value = 'AI 时代的内容创作者生存指南';
+        if(DOM.inputBody) DOM.inputBody.value = '随着生成式 AI 的普及，内容创作的门槛大幅降低。创作者需要从“拼产量”转向“拼洞察”。本文将探讨在 AI 时代，如何利用好 AI 工具，同时保持个人特色和深度思考。\n\n第一，把 AI 当作副驾驶，而不是代笔。\n第二，建立个人的知识库和风格护城河。\n第三，关注读者真实需求和情感共鸣。';
+        if(DOM.inputTags) DOM.inputTags.value = 'AI, 创作者, 效率, 思考';
+        
+        // Trigger input event
+        if(DOM.inputTitle) DOM.inputTitle.dispatchEvent(new Event('input'));
+        if(DOM.inputBody) DOM.inputBody.dispatchEvent(new Event('input'));
+        
+        showToast('已填入示例内容', 'info');
+      });
+    }
+    
+    if (DOM.btnViewConnector) {
+      DOM.btnViewConnector.addEventListener('click', function() {
+        if (DOM.connectorModal) DOM.connectorModal.style.display = 'flex';
+      });
+    }
+  }
+
   function handleAdapt() {
     var title = DOM.inputTitle?.value?.trim() || '';
     var body = DOM.inputBody?.value || '';
     var tagsStr = DOM.inputTags?.value || '';
-    var mediaStr = state.mediaAssets.length > 0 ? '已附加 ' + state.mediaAssets.length + ' 个素材' : '';
 
-    var rawMessages = Validator?.validateRawContent(title, body, tagsStr, mediaStr, state.selectedPlatforms) || [];
-    var hasError = rawMessages.some(function (m) { return m.level === 'error'; });
+    var rawMessages = Validator?.validateRawContent(title, body, tagsStr, state.mediaAssets, state.selectedPlatforms) || [];
+    var errorMsgs = rawMessages.filter(function (m) { return m.level === 'error'; });
+    var hasError = errorMsgs.length > 0;
     
     if (hasError) {
       state.validationMessages = rawMessages;
       renderTabsAndPreviews([], rawMessages);
-      showToast('请修复错误后再适配', 'error');
-      if (DOM.btnPublish) DOM.btnPublish.disabled = true;
-      if (DOM.btnExportPkg) DOM.btnExportPkg.disabled = true;
+      showToast(errorMsgs[0].message, 'error', 5000);
+      updateButtonStates();
       return;
     }
 
+    var mediaStr = state.mediaAssets.length > 0 ? '已附加 ' + state.mediaAssets.length + ' 个素材' : '';
     var tags = Utils?.splitTags(tagsStr) || [];
     var media = mediaStr ? [{ type: 'local', url: mediaStr, description: mediaStr }] : [];
 
@@ -266,10 +429,7 @@
     // Render Middle Column
     renderTabsAndPreviews(state.adaptedContents, state.validationMessages);
 
-    // Toggle Buttons
-    hasError = state.validationMessages.some(function (m) { return m.level === 'error'; });
-    if (DOM.btnPublish) DOM.btnPublish.disabled = hasError;
-    if (DOM.btnExportPkg) DOM.btnExportPkg.disabled = false;
+    updateButtonStates();
 
     // Build Payload
     if (Publisher && Publisher.buildPublishPayload) {
@@ -278,13 +438,16 @@
     
     if (state.unifiedPayload && DOM.payloadCode) {
       DOM.payloadCode.textContent = JSON.stringify(state.unifiedPayload, null, 2);
-      if (DOM.btnCopyPayload) DOM.btnCopyPayload.disabled = false;
     } else {
-      if (DOM.payloadCode) DOM.payloadCode.textContent = '载荷生成失败';
-      if (DOM.btnCopyPayload) DOM.btnCopyPayload.disabled = true;
+      if (DOM.payloadCode) DOM.payloadCode.textContent = '生成适配结果后，将自动生成标准 PublishPayload。';
     }
+    updateButtonStates();
 
-    showToast('适配完成，请在右侧检查各平台预览', 'success');
+    // 更新顶部状态栏
+    var statStatus = document.querySelector('.stat-status');
+    if (statStatus) statStatus.textContent = '已生成预览';
+
+    showToast('✅ 适配成功：已生成所有选中平台的预览内容！', 'success');
   }
 
   // ========== 中栏渲染：Tabs 与 预览 ==========
@@ -293,9 +456,11 @@
     if (!DOM.platformTabs || !DOM.tabContentArea) return;
 
     if (!adaptedContents || adaptedContents.length === 0) {
-      DOM.platformTabs.innerHTML = '<div class="tab-empty-hint">未生成任何适配内容</div>';
-      var errHtml = renderValidationHtml(messages); // 可能有未选平台的错误
-      DOM.tabContentArea.innerHTML = errHtml || '<div class="empty-state" id="preview-empty"><div class="empty-icon">📱</div><p>请在左侧输入内容并点击“一键适配”</p></div>';
+      DOM.platformTabs.innerHTML = '<div class="tab-empty-hint">请在左侧勾选平台</div>';
+      var errHtml = renderValidationHtml(messages);
+      var emptyHtml = '<div class="empty-card"><h3 class="empty-title">开始创建发布任务</h3><p class="empty-desc">填写内容、选择平台后，CreatorBridge 会生成各平台的适配预览和发布载荷。</p><div class="empty-steps"><div class="step-item">1. 填写标题和正文</div><div class="step-item">2. 选择至少一个发布平台</div><div class="step-item">3. 点击“一键适配”生成预览</div><div class="step-item">4. 点击“模拟发布”查看任务队列</div></div><div class="empty-actions"><button class="btn btn-primary btn-sm" id="btn-fill-demo">填写示例内容</button><button class="btn btn-ghost btn-sm" id="btn-view-connector">查看连接器说明</button></div></div>';
+      DOM.tabContentArea.innerHTML = (errHtml ? '<div style="margin-bottom:20px;">' + errHtml + '</div>' : '') + '<div class="empty-state" id="preview-empty">' + emptyHtml + '</div>';
+      bindDemoButton(); // Re-bind since we replaced innerHTML
       return;
     }
 
@@ -386,6 +551,18 @@
     });
   }
 
+  function bindTabWheelScroll() {
+    if (DOM.platformTabs) {
+      DOM.platformTabs.addEventListener('wheel', function(e) {
+        // 当垂直滚动时(deltaY)，转化为水平滚动
+        if (e.deltaY !== 0) {
+          e.preventDefault();
+          DOM.platformTabs.scrollLeft += e.deltaY;
+        }
+      }, { passive: false });
+    }
+  }
+
   // ========== 复制与导出 ==========
 
   function handleCopy(platformId) {
@@ -445,6 +622,10 @@
         return;
       }
 
+      var mode = state.connectorConfig.enabled ? 'connector' : 'mock';
+      var baseUrl = state.connectorConfig.baseUrl;
+      var token = state.runtimeToken;
+
       var success = Publisher.createTaskQueue(
         state.unifiedPayload,
         function onProgress(tasks) {
@@ -458,12 +639,14 @@
           var result = Models.createPublishResult(batchId, title, platforms);
           StorageMod?.savePublishHistory(result);
           renderHistory();
-          showToast('模拟发布流程结束', 'success');
-        }
+          var modeStr = state.connectorConfig.enabled ? '连接器分发' : '模拟发布';
+          showToast(modeStr + '流程结束', 'success');
+        },
+        mode, baseUrl, token
       );
 
       if (success) {
-        Publisher.runQueue();
+        Publisher.executeQueue();
       } else {
         showToast('队列创建失败', 'error');
       }
@@ -488,7 +671,10 @@
       html += '    <div class="queue-platform">' + Utils.escapeHTML(task.platformName) + '</div>';
       html += '    <div class="queue-time">目标: ' + Utils.escapeHTML(task.payloadSummary.title).substring(0, 10) + '...</div>';
       html += '  </div>';
-      html += '  <span class="queue-status-badge queue-status-' + task.status + '">' + Utils.escapeHTML(task.message) + '</span>';
+      
+      var retryBtn = task.status === 'failed' ? '<button class="btn btn-ghost btn-sm" onclick="Publisher.retryTask(\'' + task.taskId + '\')" style="margin-right:8px; padding:2px 6px; font-size:11px; border:1px solid var(--border-color);">重试</button>' : '';
+      
+      html += '  <div>' + retryBtn + '<span class="queue-status-badge queue-status-' + task.status + '">' + Utils.escapeHTML(task.message) + '</span></div>';
       html += '</div>';
     });
     DOM.queueList.innerHTML = html;
@@ -564,6 +750,129 @@
     });
   }
 
+  // ========== 连接器设置模态框 ==========
+
+  function initConnectorSettings() {
+    var storedConfig = StorageMod?.getConnectorConfig ? StorageMod.getConnectorConfig() : { enabled: false, baseUrl: '' };
+    state.connectorConfig.enabled = storedConfig.enabled;
+    state.connectorConfig.baseUrl = storedConfig.baseUrl;
+    
+    updateModeBadge();
+
+    if (DOM.btnSettings) {
+      DOM.btnSettings.addEventListener('click', function() {
+        // 打开时回显配置
+        if (DOM.toggleConnector) DOM.toggleConnector.checked = state.connectorConfig.enabled;
+        if (DOM.inputBaseUrl) DOM.inputBaseUrl.value = state.connectorConfig.baseUrl || '';
+        if (DOM.inputRuntimeToken) DOM.inputRuntimeToken.value = state.runtimeToken || '';
+        
+        toggleInputs(state.connectorConfig.enabled);
+        
+        if (DOM.connectorModal) DOM.connectorModal.style.display = 'flex';
+      });
+    }
+
+    if (DOM.btnCloseModal) {
+      DOM.btnCloseModal.addEventListener('click', function() {
+        if (DOM.connectorModal) DOM.connectorModal.style.display = 'none';
+      });
+    }
+
+    if (DOM.toggleConnector) {
+      DOM.toggleConnector.addEventListener('change', function(e) {
+        toggleInputs(e.target.checked);
+      });
+    }
+
+    if (DOM.btnTestConnection) {
+      DOM.btnTestConnection.addEventListener('click', async function() {
+        var url = DOM.inputBaseUrl?.value?.trim() || '';
+        if (!url) {
+          showToast('网关地址不能为空', 'warning');
+          return;
+        }
+        if (!url.startsWith('http')) {
+          showToast('URL 格式错误 (需要 http/https)', 'error');
+          return;
+        }
+        var token = DOM.inputRuntimeToken?.value || '';
+        var checkUrl = url.replace(/\\/$/, '') + '/health';
+        var controller = new AbortController();
+        var timeoutId = setTimeout(function() { controller.abort(); }, 5000); // 5s timeout
+
+        try {
+          showToast('正在测试连接...', 'info', 1500);
+          var headers = {};
+          if (token) headers['Authorization'] = 'Bearer ' + token;
+          var response = await fetch(checkUrl, { method: 'GET', headers: headers, signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            if (response.status === 401 || response.status === 403) throw new Error('鉴权失败 (' + response.status + ')');
+            if (response.status === 404) throw new Error('接口不存在 (' + response.status + ')');
+            throw new Error('HTTP ' + response.status);
+          }
+          showToast('测试通过：连接器工作正常', 'success');
+        } catch (error) {
+          clearTimeout(timeoutId);
+          if (error.name === 'AbortError') {
+            showToast('请求超时，请检查网关是否启动', 'error');
+          } else if (error.message === 'Failed to fetch') {
+            showToast('网络不可达或 CORS 跨域拦截', 'error');
+          } else {
+            showToast('测试连接失败: ' + error.message, 'error');
+          }
+        }
+      });
+    }
+
+    if (DOM.btnSaveSettings) {
+      DOM.btnSaveSettings.addEventListener('click', function() {
+        var isEnabled = DOM.toggleConnector?.checked || false;
+        var url = DOM.inputBaseUrl?.value?.trim() || '';
+        var token = DOM.inputRuntimeToken?.value?.trim() || '';
+
+        if (isEnabled && (!url || !url.startsWith('http'))) {
+          showToast('启用连接器时，必须提供合法的 Base URL', 'error');
+          return;
+        }
+
+        // 保存非敏感配置到本地
+        state.connectorConfig.enabled = isEnabled;
+        state.connectorConfig.baseUrl = url;
+        if (StorageMod?.saveConnectorConfig) StorageMod.saveConnectorConfig(state.connectorConfig);
+        
+        // 敏感 Token 仅存内存
+        state.runtimeToken = token;
+
+        updateModeBadge();
+        if (DOM.connectorModal) DOM.connectorModal.style.display = 'none';
+        showToast('连接器配置已更新', 'success');
+      });
+    }
+  }
+
+  function toggleInputs(enabled) {
+    if (DOM.inputBaseUrl) DOM.inputBaseUrl.disabled = !enabled;
+    if (DOM.inputRuntimeToken) DOM.inputRuntimeToken.disabled = !enabled;
+    if (DOM.btnTestConnection) DOM.btnTestConnection.disabled = !enabled;
+  }
+
+  function updateModeBadge() {
+    if (!DOM.modeBadge) return;
+    if (state.connectorConfig.enabled) {
+      DOM.modeBadge.textContent = 'Connector 模式';
+      DOM.modeBadge.className = 'badge'; // Reset classes
+      DOM.modeBadge.style.background = 'rgba(59, 130, 246, 0.2)';
+      DOM.modeBadge.style.color = '#93C5FD';
+      DOM.modeBadge.style.border = '1px solid rgba(59, 130, 246, 0.4)';
+    } else {
+      DOM.modeBadge.textContent = 'Mock 模式';
+      DOM.modeBadge.className = 'badge badge-mock';
+      DOM.modeBadge.removeAttribute('style'); // Use original css
+    }
+  }
+
   // ========== 初始化 ==========
 
   function init() {
@@ -579,8 +888,12 @@
     bindPayloadEvents();
     bindClearHistoryButton();
     bindDraftEvents();
+    bindDemoButton();
     renderHistory();
+    updateButtonStates(); // Init button states
+    bindTabWheelScroll();
     initBackToTop();
+    initConnectorSettings();
   }
 
   document.addEventListener('DOMContentLoaded', init);

@@ -440,6 +440,9 @@
       })
       .filter(function (result) {
         return result !== null;
+      });
+  }
+
   // 全局挂载
   window.Adapters = {
     adaptToWechat: adaptToWechat,

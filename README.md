@@ -86,6 +86,14 @@ CreatorBridge 提供一个"写一次，到处发"的专业效率工作台，在�
   2. 创作者可以将此 JSON 提供给自建的 Node.js/Python 代理中转服务进行真实发布处理。
   3. 系统严格遵循“**前端不保存密钥**”的原则，不要求填入 Cookie/Token，也不发起爬虫请求，所有鉴权逻辑均应在服务端完成。
 
+### 3. Connector 发布网关投递工作流
+* **模式定义**：前端直接将 Payload 投递至您自建的自定义网络后端。
+* **业务行为**：用户可在右上角“⚙️ 设置”中开启发布网关模式，配置 `Connector Base URL` 和单次有效的 `Runtime Token`（仅保存在当前页面内存，刷新即焚，禁止写入 localStorage 等）。点击发布后，系统会通过跨域请求将 Payload 投递给配置好的目标接口。
+* **职责边界**：
+  1. **前端只负责投递 Payload**。
+  2. 此网关设置面板**绝不是**“平台开发者密钥配置中心”。前端不接受、不保存任何真实社交平台的 AppID、AppSecret、Cookie 或长期 Token。
+  3. **真实发布和密钥管理全部属于您自建后端连接器的职责**。各平台的敏感凭证必须硬核存储在您后端的环境变量 (`.env`) 或机房密文库中。
+
 ---
 
 ## 安全说明与凭证保护规范
@@ -138,19 +146,28 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
-// 微信公众号发布端点预留
-app.post('/api/publish/wechat', async (req, res) => {
+// 微信公众号发布端点预留契约
+// CreatorBridge 前端会以 POST 方式调用: POST {Connector_Base_URL}/api/publish/wechat
+// 请求头会携带: Authorization: Bearer <Runtime_Token>
+// 请求体会发送标准的 PublishPayload JSON 对象
+app.post('/api/publish/:platformId', async (req, res) => {
+  const platformId = req.params.platformId;
   const payload = req.body;
-  const wechatContent = payload.targets.find(t => t.platformId === 'wechat');
   
-  if (!wechatContent) {
-    return res.status(400).json({ success: false, message: '未找到对应内容' });
+  // 安全校验：请在此处校验 req.headers.authorization
+  const token = req.headers.authorization;
+  if (!token) return res.status(401).json({ success: false, message: '未授权' });
+
+  const targetContent = payload.targets.find(t => t.platformId === platformId);
+  if (!targetContent) {
+    return res.status(400).json({ success: false, message: '未找到对应平台的适配内容' });
   }
   
   try {
-    // 调用微信官方 API 上传草稿箱或直接发布（在此处安全注入服务端的 AppSecret）
-    // const result = await uploadToWechatDraft(wechatContent.title, wechatContent.body);
-    res.json({ success: true, message: '成功发布' });
+    // 调用各平台官方真实 API (如微信素材上传、知乎专栏等)
+    // 您的真实 AppSecret/Cookie 应安全存储在此后端，绝不可在前端泄露！
+    // const result = await publishToRealPlatform(targetContent);
+    res.json({ success: true, message: '成功分发至真实平台' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

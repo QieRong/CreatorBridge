@@ -10,7 +10,8 @@
   // 存储键名常量
   var STORAGE_KEYS = {
     DRAFT: 'creatorbridge_draft',
-    HISTORY: 'creatorbridge_publish_history'
+    HISTORY: 'creatorbridge_publish_history',
+    CONNECTOR: 'creatorbridge_connector_config'
   };
 
   /**
@@ -106,13 +107,28 @@
     }
   }
 
+  function saveConnectorConfig(config) {
+    if (!config) return;
+    safeSet(STORAGE_KEYS.CONNECTOR, {
+      enabled: !!config.enabled,
+      baseUrl: config.baseUrl || ''
+    });
+  }
+
+  function getConnectorConfig() {
+    var stored = safeGet(STORAGE_KEYS.CONNECTOR);
+    return stored || { enabled: false, baseUrl: '' };
+  }
+
   // 全局挂载
   window.Storage = {
     saveDraft: saveDraft,
     loadDraft: loadDraft,
     savePublishHistory: savePublishHistory,
     getPublishHistory: getPublishHistory,
-    clearPublishHistory: clearPublishHistory
+    clearPublishHistory: clearPublishHistory,
+    saveConnectorConfig: saveConnectorConfig,
+    getConnectorConfig: getConnectorConfig
   };
 
 })();
