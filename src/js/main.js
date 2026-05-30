@@ -31,7 +31,8 @@
     adaptedContents: [],
     validationMessages: [],
     lastPublishResult: null,
-    unifiedPayload: null // 新增：保存当前生成的发布载荷数据
+    unifiedPayload: null, // 新增：保存当前生成的发布载荷数据
+    mediaAssets: [] // 新增：保存本地素材元数据和预览URL
   };
 
   // ========== 初始化 ==========
@@ -42,6 +43,8 @@
     DOM.inputBody = document.getElementById('input-body');
     DOM.inputTags = document.getElementById('input-tags');
     DOM.inputMedia = document.getElementById('input-media');
+    DOM.mediaCountHint = document.getElementById('media-count-hint');
+    DOM.mediaPreviewContainer = document.getElementById('media-preview-container');
     DOM.titleCounter = document.getElementById('title-counter');
     DOM.bodyCounter = document.getElementById('body-counter');
     DOM.platformSelector = document.getElementById('platform-selector');
@@ -52,6 +55,8 @@
     DOM.btnClearHistory = document.getElementById('btn-clear-history');
     DOM.sectionValidation = document.getElementById('section-validation');
     DOM.sectionPreview = document.getElementById('section-preview');
+    DOM.sectionQueue = document.getElementById('section-queue');
+    DOM.queueList = document.getElementById('queue-list');
     DOM.sectionPublishResult = document.getElementById('section-publish-result');
     DOM.sectionHistory = document.getElementById('section-history');
     DOM.validationList = document.getElementById('validation-list');
@@ -130,6 +135,62 @@
     }
   }
 
+  /** 绑定素材上传事件 */
+  function bindMediaUpload() {
+    if (!DOM.inputMedia) return;
+    DOM.inputMedia.addEventListener('change', function (e) {
+      var files = e.target.files;
+      if (!files || files.length === 0) return;
+
+      // 追加新文件到 mediaAssets
+      for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        
+        // 生成本地预览URL
+        var previewUrl = '';
+        if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+          previewUrl = URL.createObjectURL(file);
+        }
+
+        state.mediaAssets.push({
+          id: 'local-' + Date.now() + '-' + i,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          category: file.type.startsWith('video/') ? 'video' : 'image',
+          source: 'local-preview',
+          previewUrl: previewUrl
+        });
+      }
+
+      renderMediaPreview();
+      
+      // 不清空 file input 的 value，以便允许继续选择，或者为了避免选择同一文件时不触发 change，清空 value
+      DOM.inputMedia.value = '';
+    });
+  }
+
+  /** 渲染素材预览区 */
+  function renderMediaPreview() {
+    if (!DOM.mediaPreviewContainer || !DOM.mediaCountHint) return;
+    
+    DOM.mediaCountHint.textContent = '已选择 ' + state.mediaAssets.length + ' 个文件';
+    
+    var html = '';
+    state.mediaAssets.forEach(function (asset) {
+      html += '<div class="media-preview-item" title="' + Utils.escapeHTML(asset.name) + '">';
+      if (asset.category === 'image') {
+        html += '  <img src="' + asset.previewUrl + '" alt="' + Utils.escapeHTML(asset.name) + '">';
+      } else if (asset.category === 'video') {
+        html += '  <video src="' + asset.previewUrl + '" muted></video>';
+      }
+      html += '  <span class="media-type-badge">' + (asset.category === 'image' ? '图' : '视') + '</span>';
+      html += '</div>';
+    });
+    
+    DOM.mediaPreviewContainer.innerHTML = html;
+  }
+
   /** 绑定清空按钮 */
   function bindClearButton() {
     if (!DOM.btnClear) return;
@@ -138,6 +199,16 @@
       if (DOM.inputBody) DOM.inputBody.value = '';
       if (DOM.inputTags) DOM.inputTags.value = '';
       if (DOM.inputMedia) DOM.inputMedia.value = '';
+      if (DOM.mediaCountHint) DOM.mediaCountHint.textContent = '未选择文件';
+      if (DOM.mediaPreviewContainer) DOM.mediaPreviewContainer.innerHTML = '';
+      
+      // 清理对象 URL
+      state.mediaAssets.forEach(function(asset) {
+        if (asset.previewUrl) {
+          URL.revokeObjectURL(asset.previewUrl);
+        }
+      });
+      state.mediaAssets = [];
       if (DOM.titleCounter) DOM.titleCounter.textContent = '0 / 100';
       if (DOM.bodyCounter) DOM.bodyCounter.textContent = '0 字';
 
@@ -155,6 +226,7 @@
 
       if (DOM.sectionValidation) DOM.sectionValidation.style.display = 'none';
       if (DOM.sectionPreview) DOM.sectionPreview.style.display = 'none';
+      if (DOM.sectionQueue) DOM.sectionQueue.style.display = 'none';
       if (DOM.sectionPublishResult) DOM.sectionPublishResult.style.display = 'none';
       if (DOM.btnPublish) DOM.btnPublish.disabled = true;
       if (DOM.btnExport) DOM.btnExport.disabled = true;
@@ -182,7 +254,8 @@
     var title = DOM.inputTitle?.value?.trim() || '';
     var body = DOM.inputBody?.value || '';
     var tagsStr = DOM.inputTags?.value || '';
-    var mediaStr = DOM.inputMedia?.value?.trim() || '';
+    // 素材改为结构化数据传递
+    var mediaStr = state.mediaAssets.length > 0 ? ('已选择 ' + state.mediaAssets.length + ' 个素材') : '';
 
     // 第一步：原始内容校验
     var rawMessages = Validator?.validateRawContent(title, body, tagsStr, mediaStr, state.selectedPlatforms) || [];
@@ -239,7 +312,8 @@
 
     // 新增：构建标准统一发布载荷 (PublishPayload) 并渲染
     if (Publisher && Publisher.buildPublishPayload) {
-      state.unifiedPayload = Publisher.buildPublishPayload(state.unifiedContent, state.adaptedContents, 'payload') || null;
+      var payloadOptions = { mediaAssets: state.mediaAssets };
+      state.unifiedPayload = Publisher.buildPublishPayload(state.unifiedContent, state.adaptedContents, 'payload', payloadOptions) || null;
     }
     if (state.unifiedPayload && DOM.payloadCode) {
       DOM.payloadCode.textContent = JSON.stringify(state.unifiedPayload, null, 2);
@@ -440,8 +514,8 @@
   /** 处理模拟发布 */
   function handlePublish() {
     // 检查是否已有适配结果
-    if (!state.adaptedContents || state.adaptedContents.length === 0) {
-      showToast('请先点击「一键适配」生成平台内容', 'warning');
+    if (!state.unifiedPayload) {
+      showToast('请先点击「一键适配」生成载荷', 'warning');
       return;
     }
 
@@ -452,32 +526,84 @@
       return;
     }
 
-    // 调用模拟发布
-    var title = state.unifiedContent?.title || '';
-    var result = Publisher?.publishSelectedPlatforms(title, state.adaptedContents);
+    // 调用任务队列
+    if (DOM.sectionPublishResult) DOM.sectionPublishResult.style.display = 'none';
+    if (DOM.sectionQueue) DOM.sectionQueue.style.display = 'block';
+    
+    // 创建队列
+    var success = Publisher.createTaskQueue(
+      state.unifiedPayload,
+      function onProgress(tasks) {
+        renderQueue(tasks);
+      },
+      function onComplete(batchId, tasks) {
+        // 完成后组装结果并保存
+        var title = state.unifiedContent?.title || '无标题';
+        var platforms = tasks.map(function(t) {
+          return {
+            platformId: t.platformId,
+            platformName: t.platformName,
+            status: t.status,
+            message: t.message
+          };
+        });
+        
+        var result = Models.createPublishResult(batchId, title, platforms);
+        state.lastPublishResult = result;
+        StorageMod?.savePublishHistory(result);
+        renderPublishResult(result);
+        renderHistory();
+        
+        var hasFailures = tasks.some(function(t) { return t.status === 'failed'; });
+        if (hasFailures) {
+          showToast('模拟发布完成，但有部分任务失败', 'warning');
+        } else {
+          showToast('模拟发布全部成功！', 'success');
+        }
+        
+        if (DOM.sectionPublishResult) {
+          DOM.sectionPublishResult.style.display = 'block';
+        }
+      }
+    );
 
-    if (!result) {
-      showToast('模拟发布失败', 'error');
-      return;
+    if (success) {
+      if (DOM.sectionQueue) {
+        DOM.sectionQueue.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      // 初次渲染
+      renderQueue(Publisher.getTasks ? Publisher.getTasks() : []);
+      // 启动
+      Publisher.runQueue();
+    } else {
+      showToast('队列创建失败', 'error');
     }
+  }
 
-    state.lastPublishResult = result;
-
-    // 保存到发布历史
-    StorageMod?.savePublishHistory(result);
-
-    // 渲染发布结果
-    renderPublishResult(result);
-
-    // 更新发布历史
-    renderHistory();
-
-    showToast('模拟发布成功！批次号：' + result.batchId, 'success');
-
-    // 滚动到发布结果区
-    if (DOM.sectionPublishResult) {
-      DOM.sectionPublishResult.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+  /** 渲染任务队列 */
+  function renderQueue(tasks) {
+    if (!DOM.queueList) return;
+    
+    // 如果 publisher 暴露了 getTasks，但是回调里已经传了，直接用
+    if (!tasks) return;
+    
+    var html = '';
+    tasks.forEach(function(task) {
+      html += '<div class="queue-item">';
+      html += '  <div class="queue-item-info">';
+      html += '    <div class="queue-item-title">' + Utils.escapeHTML(task.platformName) + '</div>';
+      html += '    <div class="queue-item-desc">目标: ' + Utils.escapeHTML(task.payloadSummary.title) + '</div>';
+      html += '  </div>';
+      html += '  <div class="queue-item-status">';
+      html += '    <span class="queue-status-badge queue-status-' + task.status + '">' + Utils.escapeHTML(task.message) + '</span>';
+      if (task.status === 'failed') {
+        html += '    <button class="btn btn-outline btn-sm" onclick="App.retryTask(\'' + task.taskId + '\')">重试</button>';
+      }
+      html += '  </div>';
+      html += '</div>';
+    });
+    
+    DOM.queueList.innerHTML = html;
   }
 
   // ========== 渲染：发布结果 ==========
@@ -766,6 +892,7 @@
     bindClearHistoryButton();
     bindPayloadEvents(); // 新增：绑定载荷交互事件
     bindModeEvents(); // 新增：绑定发布模式切换事件
+    bindMediaUpload(); // 新增：绑定本地素材上传事件
     renderHistory();
     console.log('CreatorBridge 初始化完成 ✓');
   }
@@ -775,7 +902,12 @@
   // 暴露全局方法
   window.App = {
     showToast: showToast,
-    getState: function () { return state; }
+    getState: function () { return state; },
+    retryTask: function(taskId) {
+      if (Publisher && Publisher.retryTask) {
+        Publisher.retryTask(taskId);
+      }
+    }
   };
 
 })();

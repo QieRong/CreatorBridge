@@ -58,11 +58,21 @@
       id: 'xiaohongshu',
       name: '小红书',
       icon: '📕',
-      description: '适合种草笔记、生活分享，面向追求审美的年轻用户',
+      description: '适合生活分享、种草笔记，面向年轻女性用户为主',
       maxTitleLength: 20,
       maxBodyLength: 1000,
-      maxTags: 10,
-      color: '#FE2C55'
+      maxTags: 6,
+      color: '#FF2442'
+    },
+    {
+      id: 'weibo',
+      name: '微博',
+      icon: '👁️',
+      description: '适合碎片化表达、实时热点传播，面向泛大众用户',
+      maxTitleLength: 30, // 微博虽然没有独立标题，这里作为首句字数参考
+      maxBodyLength: 1500, // 高级号或长文可更长
+      maxTags: 5,
+      color: '#E6162D'
     }
   ];
 

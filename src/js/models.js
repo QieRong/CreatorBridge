@@ -312,6 +312,7 @@
       publishNow: false,
       saveAsDraft: true
     };
+    var mediaAssets = [];
     if (options != null && typeof options === 'object') {
       if (options.dryRun !== undefined) {
         publishOptions.dryRun = Boolean(options.dryRun);
@@ -322,6 +323,9 @@
       if (options.saveAsDraft !== undefined) {
         publishOptions.saveAsDraft = Boolean(options.saveAsDraft);
       }
+      if (Array.isArray(options.mediaAssets)) {
+        mediaAssets = options.mediaAssets;
+      }
     }
 
     return {
@@ -330,6 +334,7 @@
       source: sourceData,
       targets: targetList,
       options: publishOptions,
+      mediaAssets: mediaAssets,
       createdAt: now
     };
   }
