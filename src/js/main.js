@@ -175,18 +175,14 @@
 
   function bindPlatformEvents() {
     if (!DOM.platformSelector) return;
-    DOM.platformSelector.addEventListener('click', function (e) {
-      var item = e.target.closest('.platform-item');
-      if (!item) return;
-      var checkbox = item.querySelector('input[type="checkbox"]');
-      if (!checkbox) return;
-      
-      // Prevent double toggle if clicking the checkbox itself vs the label wrapper
-      if (e.target !== checkbox) {
-        checkbox.checked = !checkbox.checked;
+    DOM.platformSelector.addEventListener('change', function (e) {
+      if (e.target.type === 'checkbox') {
+        var item = e.target.closest('.platform-item');
+        if (item) {
+          item.classList.toggle('selected', e.target.checked);
+        }
+        updateSelectedPlatforms();
       }
-      item.classList.toggle('selected', checkbox.checked);
-      updateSelectedPlatforms();
     });
   }
 
