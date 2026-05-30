@@ -138,19 +138,28 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
-// 微信公众号发布端点预留
-app.post('/api/publish/wechat', async (req, res) => {
+// 微信公众号发布端点预留契约
+// CreatorBridge 前端会以 POST 方式调用: POST {Connector_Base_URL}/api/publish/wechat
+// 请求头会携带: Authorization: Bearer <Runtime_Token>
+// 请求体会发送标准的 PublishPayload JSON 对象
+app.post('/api/publish/:platformId', async (req, res) => {
+  const platformId = req.params.platformId;
   const payload = req.body;
-  const wechatContent = payload.targets.find(t => t.platformId === 'wechat');
   
-  if (!wechatContent) {
-    return res.status(400).json({ success: false, message: '未找到对应内容' });
+  // 安全校验：请在此处校验 req.headers.authorization
+  const token = req.headers.authorization;
+  if (!token) return res.status(401).json({ success: false, message: '未授权' });
+
+  const targetContent = payload.targets.find(t => t.platformId === platformId);
+  if (!targetContent) {
+    return res.status(400).json({ success: false, message: '未找到对应平台的适配内容' });
   }
   
   try {
-    // 调用微信官方 API 上传草稿箱或直接发布（在此处安全注入服务端的 AppSecret）
-    // const result = await uploadToWechatDraft(wechatContent.title, wechatContent.body);
-    res.json({ success: true, message: '成功发布' });
+    // 调用各平台官方真实 API (如微信素材上传、知乎专栏等)
+    // 您的真实 AppSecret/Cookie 应安全存储在此后端，绝不可在前端泄露！
+    // const result = await publishToRealPlatform(targetContent);
+    res.json({ success: true, message: '成功分发至真实平台' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

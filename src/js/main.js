@@ -25,7 +25,9 @@
     validationMessages: [],
     unifiedPayload: null,
     mediaAssets: [],
-    activeTabPlatformId: null
+    activeTabPlatformId: null,
+    connectorConfig: { enabled: false, baseUrl: '' },
+    runtimeToken: ''
   };
 
   /** 缓存 DOM 元素引用 */
@@ -67,6 +69,17 @@
     DOM.historyEmpty = document.getElementById('history-empty');
 
     DOM.toastContainer = document.getElementById('toast-container');
+    
+    // Modal
+    DOM.btnSettings = document.getElementById('btn-settings');
+    DOM.modeBadge = document.getElementById('mode-badge');
+    DOM.connectorModal = document.getElementById('connector-modal');
+    DOM.btnCloseModal = document.getElementById('btn-close-modal');
+    DOM.toggleConnector = document.getElementById('toggle-connector');
+    DOM.inputBaseUrl = document.getElementById('input-base-url');
+    DOM.inputRuntimeToken = document.getElementById('input-runtime-token');
+    DOM.btnTestConnection = document.getElementById('btn-test-connection');
+    DOM.btnSaveSettings = document.getElementById('btn-save-settings');
   }
 
   // ========== 初始化渲染 ==========
@@ -445,6 +458,10 @@
         return;
       }
 
+      var mode = state.connectorConfig.enabled ? 'connector' : 'mock';
+      var baseUrl = state.connectorConfig.baseUrl;
+      var token = state.runtimeToken;
+
       var success = Publisher.createTaskQueue(
         state.unifiedPayload,
         function onProgress(tasks) {
@@ -458,12 +475,14 @@
           var result = Models.createPublishResult(batchId, title, platforms);
           StorageMod?.savePublishHistory(result);
           renderHistory();
-          showToast('模拟发布流程结束', 'success');
-        }
+          var modeStr = state.connectorConfig.enabled ? '连接器分发' : '模拟发布';
+          showToast(modeStr + '流程结束', 'success');
+        },
+        mode, baseUrl, token
       );
 
       if (success) {
-        Publisher.runQueue();
+        Publisher.executeQueue();
       } else {
         showToast('队列创建失败', 'error');
       }
@@ -488,7 +507,10 @@
       html += '    <div class="queue-platform">' + Utils.escapeHTML(task.platformName) + '</div>';
       html += '    <div class="queue-time">目标: ' + Utils.escapeHTML(task.payloadSummary.title).substring(0, 10) + '...</div>';
       html += '  </div>';
-      html += '  <span class="queue-status-badge queue-status-' + task.status + '">' + Utils.escapeHTML(task.message) + '</span>';
+      
+      var retryBtn = task.status === 'failed' ? '<button class="btn btn-ghost btn-sm" onclick="Publisher.retryTask(\'' + task.taskId + '\')" style="margin-right:8px; padding:2px 6px; font-size:11px; border:1px solid var(--border-color);">重试</button>' : '';
+      
+      html += '  <div>' + retryBtn + '<span class="queue-status-badge queue-status-' + task.status + '">' + Utils.escapeHTML(task.message) + '</span></div>';
       html += '</div>';
     });
     DOM.queueList.innerHTML = html;
@@ -564,6 +586,98 @@
     });
   }
 
+  // ========== 连接器设置模态框 ==========
+
+  function initConnectorSettings() {
+    var storedConfig = StorageMod?.getConnectorConfig ? StorageMod.getConnectorConfig() : { enabled: false, baseUrl: '' };
+    state.connectorConfig.enabled = storedConfig.enabled;
+    state.connectorConfig.baseUrl = storedConfig.baseUrl;
+    
+    updateModeBadge();
+
+    if (DOM.btnSettings) {
+      DOM.btnSettings.addEventListener('click', function() {
+        // 打开时回显配置
+        if (DOM.toggleConnector) DOM.toggleConnector.checked = state.connectorConfig.enabled;
+        if (DOM.inputBaseUrl) DOM.inputBaseUrl.value = state.connectorConfig.baseUrl || '';
+        if (DOM.inputRuntimeToken) DOM.inputRuntimeToken.value = state.runtimeToken || '';
+        
+        toggleInputs(state.connectorConfig.enabled);
+        
+        if (DOM.connectorModal) DOM.connectorModal.style.display = 'flex';
+      });
+    }
+
+    if (DOM.btnCloseModal) {
+      DOM.btnCloseModal.addEventListener('click', function() {
+        if (DOM.connectorModal) DOM.connectorModal.style.display = 'none';
+      });
+    }
+
+    if (DOM.toggleConnector) {
+      DOM.toggleConnector.addEventListener('change', function(e) {
+        toggleInputs(e.target.checked);
+      });
+    }
+
+    if (DOM.btnTestConnection) {
+      DOM.btnTestConnection.addEventListener('click', function() {
+        var url = DOM.inputBaseUrl?.value?.trim() || '';
+        if (!url || !url.startsWith('http')) {
+          showToast('请输入合法的 Base URL (http/https 开头)', 'warning');
+          return;
+        }
+        showToast('地址格式校验通过，正式请求将在投递环节执行。', 'info');
+      });
+    }
+
+    if (DOM.btnSaveSettings) {
+      DOM.btnSaveSettings.addEventListener('click', function() {
+        var isEnabled = DOM.toggleConnector?.checked || false;
+        var url = DOM.inputBaseUrl?.value?.trim() || '';
+        var token = DOM.inputRuntimeToken?.value?.trim() || '';
+
+        if (isEnabled && (!url || !url.startsWith('http'))) {
+          showToast('启用连接器时，必须提供合法的 Base URL', 'error');
+          return;
+        }
+
+        // 保存非敏感配置到本地
+        state.connectorConfig.enabled = isEnabled;
+        state.connectorConfig.baseUrl = url;
+        if (StorageMod?.saveConnectorConfig) StorageMod.saveConnectorConfig(state.connectorConfig);
+        
+        // 敏感 Token 仅存内存
+        state.runtimeToken = token;
+
+        updateModeBadge();
+        if (DOM.connectorModal) DOM.connectorModal.style.display = 'none';
+        showToast('连接器配置已更新', 'success');
+      });
+    }
+  }
+
+  function toggleInputs(enabled) {
+    if (DOM.inputBaseUrl) DOM.inputBaseUrl.disabled = !enabled;
+    if (DOM.inputRuntimeToken) DOM.inputRuntimeToken.disabled = !enabled;
+    if (DOM.btnTestConnection) DOM.btnTestConnection.disabled = !enabled;
+  }
+
+  function updateModeBadge() {
+    if (!DOM.modeBadge) return;
+    if (state.connectorConfig.enabled) {
+      DOM.modeBadge.textContent = 'Connector 模式';
+      DOM.modeBadge.className = 'badge'; // Reset classes
+      DOM.modeBadge.style.background = 'rgba(59, 130, 246, 0.2)';
+      DOM.modeBadge.style.color = '#93C5FD';
+      DOM.modeBadge.style.border = '1px solid rgba(59, 130, 246, 0.4)';
+    } else {
+      DOM.modeBadge.textContent = 'Mock 模式';
+      DOM.modeBadge.className = 'badge badge-mock';
+      DOM.modeBadge.removeAttribute('style'); // Use original css
+    }
+  }
+
   // ========== 初始化 ==========
 
   function init() {
@@ -581,6 +695,7 @@
     bindDraftEvents();
     renderHistory();
     initBackToTop();
+    initConnectorSettings();
   }
 
   document.addEventListener('DOMContentLoaded', init);
