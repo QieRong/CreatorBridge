@@ -30,6 +30,15 @@
     runtimeToken: ''
   };
 
+  var PLATFORM_ICONS = {
+    'wechat': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 10C17 7.23858 14.7614 5 12 5C9.23858 5 7 7.23858 7 10C7 12.7614 9.23858 15 12 15C13.0673 15 14.0567 14.6656 14.8697 14.0934L17.5 15.5L16.7118 13.1362C16.9015 12.1931 17 11.1444 17 10Z"></path><path d="M22 15C22 12.7909 20.2091 11 18 11C15.7909 11 14 12.7909 14 15C14 17.2091 15.7909 19 18 19C18.8525 19 19.642 18.7324 20.2926 18.2747L22.3995 19.3995L21.7686 17.5057C21.9198 16.751 22 15.9189 22 15Z"></path></svg>',
+    'zhihu': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v8M9 11h6"></path></svg>',
+    'bilibili': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="12" rx="2"></rect><path d="M8 3l3 4M16 3l-3 4M9 12h.01M15 12h.01"></path></svg>',
+    'xiaohongshu': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21a9 9 0 100-18 9 9 0 000 18z"></path><path d="M12 8v8M9 11l3 3 3-3"></path></svg>',
+    'weibo': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"></path></svg>',
+    'default': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>'
+  };
+
   /** 缓存 DOM 元素引用 */
   function cacheDOM() {
     DOM.inputTitle = document.getElementById('input-title');
@@ -59,6 +68,9 @@
     DOM.platformTabs = document.getElementById('platform-tabs');
     DOM.tabContentArea = document.getElementById('tab-content-area');
     DOM.previewEmpty = document.getElementById('preview-empty');
+    DOM.btnFillDemo = document.getElementById('btn-fill-demo');
+    DOM.btnViewConnector = document.getElementById('btn-view-connector');
+    DOM.stepIndicator = document.getElementById('step-indicator');
 
     // Right Column
     DOM.queueList = document.getElementById('queue-list');
@@ -82,6 +94,62 @@
     DOM.btnSaveSettings = document.getElementById('btn-save-settings');
   }
 
+  function updateButtonStates() {
+    var title = DOM.inputTitle?.value?.trim() || '';
+    var body = DOM.inputBody?.value?.trim() || '';
+    var hasPlatform = state.selectedPlatforms.length > 0;
+    
+    // Update process indicator
+    if (DOM.stepIndicator) {
+      if (title && body) {
+        DOM.stepIndicator.textContent = '内容已填写';
+        DOM.stepIndicator.style.color = 'var(--color-success)';
+      } else {
+        DOM.stepIndicator.textContent = '步骤 1 / 3：编辑内容';
+        DOM.stepIndicator.style.color = 'var(--text-secondary)';
+      }
+    }
+
+    // Adapt Button
+    if (DOM.btnAdapt) {
+      if (title && body && hasPlatform) {
+        DOM.btnAdapt.disabled = false;
+        DOM.btnAdapt.title = '一键生成平台适配结果';
+      } else {
+        DOM.btnAdapt.disabled = true;
+        DOM.btnAdapt.title = '请先填写标题、正文并选择发布平台';
+      }
+    }
+
+    // Publish Button
+    if (DOM.btnPublish) {
+      var hasAdapted = state.adaptedContents && state.adaptedContents.length > 0;
+      if (hasAdapted) {
+        DOM.btnPublish.disabled = false;
+        DOM.btnPublish.title = '模拟发布到选中的平台';
+      } else {
+        DOM.btnPublish.disabled = true;
+        DOM.btnPublish.title = '请先完成一键适配';
+      }
+    }
+    
+    // Export Button
+    if (DOM.btnExportPkg) {
+      if (state.unifiedPayload) {
+        DOM.btnExportPkg.disabled = false;
+        DOM.btnExportPkg.title = '导出发布资料(含JSON)';
+      } else {
+        DOM.btnExportPkg.disabled = true;
+        DOM.btnExportPkg.title = '暂无可下载的发布资料';
+      }
+    }
+
+    // Copy Payload Button
+    if (DOM.btnCopyPayload) {
+      DOM.btnCopyPayload.disabled = !state.unifiedPayload;
+    }
+  }
+
   // ========== 初始化渲染 ==========
 
   function renderPlatformSelector() {
@@ -90,13 +158,14 @@
 
     var html = '';
     platforms.forEach(function (p) {
+      var icon = PLATFORM_ICONS[p.id] || PLATFORM_ICONS['default'];
       html += '<label class="platform-item" data-platform-id="' + p.id + '">';
       html += '  <input type="checkbox" value="' + p.id + '" style="display:none">';
-      html += '  <span class="platform-check">✓</span>';
+      html += '  <div class="platform-icon">' + icon + '</div>';
       html += '  <div class="platform-info">';
       html += '    <div class="platform-name">' + p.name + '</div>';
-      html += '    <div class="platform-desc">' + (Utils?.escapeHTML(p.description) || p.description) + '</div>';
       html += '  </div>';
+      html += '  <div class="platform-check-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"></path></svg></div>';
       html += '</label>';
     });
     DOM.platformSelector.innerHTML = html;
@@ -130,12 +199,14 @@
     if (DOM.statPlatforms) {
       DOM.statPlatforms.textContent = state.selectedPlatforms.length;
     }
+    updateButtonStates();
   }
 
   function bindInputCounters() {
     if (DOM.inputTitle && DOM.titleCounter) {
       DOM.inputTitle.addEventListener('input', function () {
         DOM.titleCounter.textContent = DOM.inputTitle.value.length + ' / 100';
+        updateButtonStates();
       });
     }
     if (DOM.inputBody && DOM.bodyCounter) {
@@ -145,6 +216,7 @@
         if (DOM.readTime) {
           DOM.readTime.textContent = '预计阅读: ' + Math.ceil(len / 300) + ' 分钟';
         }
+        updateButtonStates();
       });
     }
   }
@@ -245,6 +317,28 @@
     DOM.btnAdapt.addEventListener('click', handleAdapt);
   }
 
+  function bindDemoButton() {
+    if (DOM.btnFillDemo) {
+      DOM.btnFillDemo.addEventListener('click', function() {
+        if(DOM.inputTitle) DOM.inputTitle.value = 'AI 时代的内容创作者生存指南';
+        if(DOM.inputBody) DOM.inputBody.value = '随着生成式 AI 的普及，内容创作的门槛大幅降低。创作者需要从“拼产量”转向“拼洞察”。本文将探讨在 AI 时代，如何利用好 AI 工具，同时保持个人特色和深度思考。\n\n第一，把 AI 当作副驾驶，而不是代笔。\n第二，建立个人的知识库和风格护城河。\n第三，关注读者真实需求和情感共鸣。';
+        if(DOM.inputTags) DOM.inputTags.value = 'AI, 创作者, 效率, 思考';
+        
+        // Trigger input event
+        if(DOM.inputTitle) DOM.inputTitle.dispatchEvent(new Event('input'));
+        if(DOM.inputBody) DOM.inputBody.dispatchEvent(new Event('input'));
+        
+        showToast('已填入示例内容', 'info');
+      });
+    }
+    
+    if (DOM.btnViewConnector) {
+      DOM.btnViewConnector.addEventListener('click', function() {
+        if (DOM.connectorModal) DOM.connectorModal.style.display = 'flex';
+      });
+    }
+  }
+
   function handleAdapt() {
     var title = DOM.inputTitle?.value?.trim() || '';
     var body = DOM.inputBody?.value || '';
@@ -258,8 +352,7 @@
       state.validationMessages = rawMessages;
       renderTabsAndPreviews([], rawMessages);
       showToast('请修复错误后再适配', 'error');
-      if (DOM.btnPublish) DOM.btnPublish.disabled = true;
-      if (DOM.btnExportPkg) DOM.btnExportPkg.disabled = true;
+      updateButtonStates();
       return;
     }
 
@@ -279,10 +372,7 @@
     // Render Middle Column
     renderTabsAndPreviews(state.adaptedContents, state.validationMessages);
 
-    // Toggle Buttons
-    hasError = state.validationMessages.some(function (m) { return m.level === 'error'; });
-    if (DOM.btnPublish) DOM.btnPublish.disabled = hasError;
-    if (DOM.btnExportPkg) DOM.btnExportPkg.disabled = false;
+    updateButtonStates();
 
     // Build Payload
     if (Publisher && Publisher.buildPublishPayload) {
@@ -291,11 +381,14 @@
     
     if (state.unifiedPayload && DOM.payloadCode) {
       DOM.payloadCode.textContent = JSON.stringify(state.unifiedPayload, null, 2);
-      if (DOM.btnCopyPayload) DOM.btnCopyPayload.disabled = false;
     } else {
-      if (DOM.payloadCode) DOM.payloadCode.textContent = '载荷生成失败';
-      if (DOM.btnCopyPayload) DOM.btnCopyPayload.disabled = true;
+      if (DOM.payloadCode) DOM.payloadCode.textContent = '生成适配结果后，将自动生成标准 PublishPayload。';
     }
+    updateButtonStates();
+
+    // 更新顶部状态栏
+    var statStatus = document.querySelector('.stat-status');
+    if (statStatus) statStatus.textContent = '已生成预览';
 
     showToast('适配完成，请在右侧检查各平台预览', 'success');
   }
@@ -306,9 +399,11 @@
     if (!DOM.platformTabs || !DOM.tabContentArea) return;
 
     if (!adaptedContents || adaptedContents.length === 0) {
-      DOM.platformTabs.innerHTML = '<div class="tab-empty-hint">未生成任何适配内容</div>';
-      var errHtml = renderValidationHtml(messages); // 可能有未选平台的错误
-      DOM.tabContentArea.innerHTML = errHtml || '<div class="empty-state" id="preview-empty"><div class="empty-icon">📱</div><p>请在左侧输入内容并点击“一键适配”</p></div>';
+      DOM.platformTabs.innerHTML = '<div class="tab-empty-hint">请在左侧勾选平台</div>';
+      var errHtml = renderValidationHtml(messages);
+      var emptyHtml = '<div class="empty-card"><h3 class="empty-title">开始创建发布任务</h3><p class="empty-desc">填写内容、选择平台后，CreatorBridge 会生成各平台的适配预览和发布载荷。</p><div class="empty-steps"><div class="step-item">1. 填写标题和正文</div><div class="step-item">2. 选择至少一个发布平台</div><div class="step-item">3. 点击“一键适配”生成预览</div><div class="step-item">4. 点击“模拟发布”查看任务队列</div></div><div class="empty-actions"><button class="btn btn-primary btn-sm" id="btn-fill-demo">填写示例内容</button><button class="btn btn-ghost btn-sm" id="btn-view-connector">查看连接器说明</button></div></div>';
+      DOM.tabContentArea.innerHTML = (errHtml ? '<div style="margin-bottom:20px;">' + errHtml + '</div>' : '') + '<div class="empty-state" id="preview-empty">' + emptyHtml + '</div>';
+      bindDemoButton(); // Re-bind since we replaced innerHTML
       return;
     }
 
@@ -693,7 +788,9 @@
     bindPayloadEvents();
     bindClearHistoryButton();
     bindDraftEvents();
+    bindDemoButton();
     renderHistory();
+    updateButtonStates(); // Init button states
     initBackToTop();
     initConnectorSettings();
   }

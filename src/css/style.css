@@ -211,6 +211,14 @@ body {
 /* ============================================
    通用面板样式 (Panels)
    ============================================ */
+.process-indicator {
+  padding: 16px 20px; background: var(--bg-panel); border: 1px solid var(--border-color);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.process-step { font-size: 13px; font-weight: 600; color: var(--text-secondary); transition: color var(--transition-fast); }
+.process-path { font-size: 11px; color: var(--text-muted); }
+
 .panel {
   background: var(--bg-panel);
   border: 1px solid var(--border-color);
@@ -293,19 +301,20 @@ body {
 /* 平台复选框 */
 .platform-selector { display: flex; flex-direction: column; gap: 8px; }
 .platform-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px; background: var(--bg-input);
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; background: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm); cursor: pointer;
+  transition: all var(--transition-fast);
 }
-.platform-item:hover { border-color: var(--border-light); }
+.platform-item:hover { border-color: var(--border-light); background: var(--bg-panel-hover); }
 .platform-item.selected { border-color: var(--color-primary); background: rgba(59, 130, 246, 0.1); }
-.platform-item.selected .platform-check { background: var(--color-primary); border-color: var(--color-primary); }
-.platform-check {
-  width: 16px; height: 16px; border: 1px solid var(--border-light); border-radius: 4px;
-}
-.platform-name { font-size: 13px; color: var(--text-primary); }
-.platform-desc { font-size: 11px; color: var(--text-muted); }
+.platform-icon { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; color: var(--text-secondary); }
+.platform-item.selected .platform-icon { color: var(--color-primary); }
+.platform-info { flex: 1; }
+.platform-name { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+.platform-check-icon { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; opacity: 0; color: var(--color-primary); transition: opacity var(--transition-fast); }
+.platform-item.selected .platform-check-icon { opacity: 1; }
 
 /* ============================================
    按钮系统
@@ -343,9 +352,20 @@ body {
 
 .empty-state {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  height: 100%; color: var(--text-muted); gap: 12px; font-size: 13px;
+  height: 100%; color: var(--text-muted); gap: 12px; font-size: 13px; text-align: center;
 }
-.empty-icon { font-size: 32px; opacity: 0.5; }
+.empty-state svg { opacity: 0.5; margin-bottom: 8px; }
+
+.empty-card {
+  background: var(--bg-input); border: 1px dashed var(--border-light);
+  padding: 32px; border-radius: var(--radius-lg); max-width: 420px;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+.empty-title { font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; }
+.empty-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.6; }
+.empty-steps { display: flex; flex-direction: column; gap: 8px; text-align: left; width: 100%; background: var(--bg-panel); padding: 16px; border-radius: var(--radius-md); margin-bottom: 24px; border: 1px solid var(--border-color); }
+.step-item { font-size: 12px; color: var(--text-secondary); display: flex; gap: 8px; }
+.empty-actions { display: flex; gap: 12px; width: 100%; justify-content: center; }
 
 /* 预览卡片内容 */
 .preview-card { display: none; flex-direction: column; gap: 20px; }
