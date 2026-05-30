@@ -490,6 +490,18 @@
     });
   }
 
+  function bindTabWheelScroll() {
+    if (DOM.platformTabs) {
+      DOM.platformTabs.addEventListener('wheel', function(e) {
+        // 当垂直滚动时(deltaY)，转化为水平滚动
+        if (e.deltaY !== 0) {
+          e.preventDefault();
+          DOM.platformTabs.scrollLeft += e.deltaY;
+        }
+      }, { passive: false });
+    }
+  }
+
   // ========== 复制与导出 ==========
 
   function handleCopy(platformId) {
@@ -787,6 +799,7 @@
     bindDemoButton();
     renderHistory();
     updateButtonStates(); // Init button states
+    bindTabWheelScroll();
     initBackToTop();
     initConnectorSettings();
   }

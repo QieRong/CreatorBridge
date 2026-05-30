@@ -337,7 +337,13 @@ body {
    中栏 Tab 视图 (Middle Column)
    ============================================ */
 .tab-header { padding: 0; background: var(--bg-input); }
-.tabs { display: flex; overflow-x: auto; width: 100%; border-bottom: 1px solid var(--border-color); }
+.tabs { 
+  display: flex; overflow-x: auto; width: 100%; border-bottom: 1px solid var(--border-color); 
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.tabs::-webkit-scrollbar { display: none; /* Chrome/Safari/Opera */ }
+
 .tab-item {
   padding: 12px 20px; font-size: 13px; color: var(--text-secondary); cursor: pointer;
   border-bottom: 2px solid transparent; white-space: nowrap; transition: all var(--transition-fast);
