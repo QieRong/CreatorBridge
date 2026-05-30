@@ -223,25 +223,85 @@
       var files = e.target.files;
       if (!files || files.length === 0) return;
 
-      for (var i = 0; i < files.length; i++) {
-        var file = files[i];
-        var previewUrl = '';
-        if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
-          previewUrl = URL.createObjectURL(file);
-        }
-        state.mediaAssets.push({
-          id: 'local-' + Date.now() + '-' + i,
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          category: file.type.startsWith('video/') ? 'video' : 'image',
-          source: 'local-preview',
-          previewUrl: previewUrl
-        });
+      var hasExistingVideo = state.mediaAssets.some(function(a) { return a.category === 'video'; });
+      var hasExistingImage = state.mediaAssets.some(function(a) { return a.category === 'image'; });
+      
+      var newVideoCount = 0;
+      var newImageCount = 0;
+      for (var k = 0; k < files.length; k++) {
+         if (files[k].type.startsWith('video/')) newVideoCount++;
+         if (files[k].type.startsWith('image/')) newImageCount++;
       }
+
+      // Rule 1: Video uniqueness and exclusion
+      if (newVideoCount > 0) {
+        if (newVideoCount > 1) {
+          showToast('每次只能上传 1 个视频，多余视频将被忽略', 'warning');
+        }
+        if (hasExistingImage || newImageCount > 0) {
+           showToast('图文与视频不可混发，已清空图片，仅保留视频', 'warning');
+        }
+        // Clear all
+        state.mediaAssets.forEach(function(a) { if(a.previewUrl) URL.revokeObjectURL(a.previewUrl); });
+        state.mediaAssets = [];
+        
+        // Find the first video
+        for (var i = 0; i < files.length; i++) {
+          if (files[i].type.startsWith('video/')) {
+            addFileToAssets(files[i], 'video', i);
+            break;
+          }
+        }
+      } 
+      // Rule 2: Image limit
+      else if (newImageCount > 0) {
+        if (hasExistingVideo) {
+           showToast('图文与视频不可混发，已清空原视频，仅保留图片', 'warning');
+           state.mediaAssets.forEach(function(a) { if(a.previewUrl) URL.revokeObjectURL(a.previewUrl); });
+           state.mediaAssets = [];
+        }
+        
+        var availableSlots = 18 - state.mediaAssets.length;
+        if (availableSlots <= 0) {
+          showToast('最多只能上传 18 张图片', 'error');
+          DOM.inputMedia.value = '';
+          return;
+        }
+
+        if (newImageCount > availableSlots) {
+           showToast('最多只能上传 18 张图片，超出的将被截断', 'warning');
+        }
+
+        var addedCount = 0;
+        for (var j = 0; j < files.length; j++) {
+          if (addedCount >= availableSlots) break;
+          if (files[j].type.startsWith('image/')) {
+            addFileToAssets(files[j], 'image', j);
+            addedCount++;
+          }
+        }
+      }
+
       renderMediaPreview();
       DOM.inputMedia.value = '';
       if (DOM.statMedia) DOM.statMedia.textContent = state.mediaAssets.length;
+      updateButtonStates();
+    });
+  }
+
+  function addFileToAssets(file, category, idx) {
+    var previewUrl = '';
+    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+      previewUrl = URL.createObjectURL(file);
+    }
+    state.mediaAssets.push({
+      id: 'local-' + Date.now() + '-' + idx,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      category: category,
+      source: 'local-preview',
+      previewUrl: previewUrl
     });
   }
 
@@ -339,19 +399,20 @@
     var title = DOM.inputTitle?.value?.trim() || '';
     var body = DOM.inputBody?.value || '';
     var tagsStr = DOM.inputTags?.value || '';
-    var mediaStr = state.mediaAssets.length > 0 ? '已附加 ' + state.mediaAssets.length + ' 个素材' : '';
 
-    var rawMessages = Validator?.validateRawContent(title, body, tagsStr, mediaStr, state.selectedPlatforms) || [];
-    var hasError = rawMessages.some(function (m) { return m.level === 'error'; });
+    var rawMessages = Validator?.validateRawContent(title, body, tagsStr, state.mediaAssets, state.selectedPlatforms) || [];
+    var errorMsgs = rawMessages.filter(function (m) { return m.level === 'error'; });
+    var hasError = errorMsgs.length > 0;
     
     if (hasError) {
       state.validationMessages = rawMessages;
       renderTabsAndPreviews([], rawMessages);
-      showToast('请修复错误后再适配', 'error');
+      showToast(errorMsgs[0].message, 'error', 5000);
       updateButtonStates();
       return;
     }
 
+    var mediaStr = state.mediaAssets.length > 0 ? '已附加 ' + state.mediaAssets.length + ' 个素材' : '';
     var tags = Utils?.splitTags(tagsStr) || [];
     var media = mediaStr ? [{ type: 'local', url: mediaStr, description: mediaStr }] : [];
 
@@ -386,7 +447,7 @@
     var statStatus = document.querySelector('.stat-status');
     if (statStatus) statStatus.textContent = '已生成预览';
 
-    showToast('适配完成，请在右侧检查各平台预览', 'success');
+    showToast('✅ 适配成功：已生成所有选中平台的预览内容！', 'success');
   }
 
   // ========== 中栏渲染：Tabs 与 预览 ==========
