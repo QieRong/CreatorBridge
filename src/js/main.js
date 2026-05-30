@@ -31,7 +31,8 @@
     adaptedContents: [],
     validationMessages: [],
     lastPublishResult: null,
-    unifiedPayload: null // 新增：保存当前生成的发布载荷数据
+    unifiedPayload: null, // 新增：保存当前生成的发布载荷数据
+    mediaAssets: [] // 新增：保存本地素材元数据和预览URL
   };
 
   // ========== 初始化 ==========
@@ -42,6 +43,8 @@
     DOM.inputBody = document.getElementById('input-body');
     DOM.inputTags = document.getElementById('input-tags');
     DOM.inputMedia = document.getElementById('input-media');
+    DOM.mediaCountHint = document.getElementById('media-count-hint');
+    DOM.mediaPreviewContainer = document.getElementById('media-preview-container');
     DOM.titleCounter = document.getElementById('title-counter');
     DOM.bodyCounter = document.getElementById('body-counter');
     DOM.platformSelector = document.getElementById('platform-selector');
@@ -130,6 +133,62 @@
     }
   }
 
+  /** 绑定素材上传事件 */
+  function bindMediaUpload() {
+    if (!DOM.inputMedia) return;
+    DOM.inputMedia.addEventListener('change', function (e) {
+      var files = e.target.files;
+      if (!files || files.length === 0) return;
+
+      // 追加新文件到 mediaAssets
+      for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        
+        // 生成本地预览URL
+        var previewUrl = '';
+        if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+          previewUrl = URL.createObjectURL(file);
+        }
+
+        state.mediaAssets.push({
+          id: 'local-' + Date.now() + '-' + i,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          category: file.type.startsWith('video/') ? 'video' : 'image',
+          source: 'local-preview',
+          previewUrl: previewUrl
+        });
+      }
+
+      renderMediaPreview();
+      
+      // 不清空 file input 的 value，以便允许继续选择，或者为了避免选择同一文件时不触发 change，清空 value
+      DOM.inputMedia.value = '';
+    });
+  }
+
+  /** 渲染素材预览区 */
+  function renderMediaPreview() {
+    if (!DOM.mediaPreviewContainer || !DOM.mediaCountHint) return;
+    
+    DOM.mediaCountHint.textContent = '已选择 ' + state.mediaAssets.length + ' 个文件';
+    
+    var html = '';
+    state.mediaAssets.forEach(function (asset) {
+      html += '<div class="media-preview-item" title="' + Utils.escapeHTML(asset.name) + '">';
+      if (asset.category === 'image') {
+        html += '  <img src="' + asset.previewUrl + '" alt="' + Utils.escapeHTML(asset.name) + '">';
+      } else if (asset.category === 'video') {
+        html += '  <video src="' + asset.previewUrl + '" muted></video>';
+      }
+      html += '  <span class="media-type-badge">' + (asset.category === 'image' ? '图' : '视') + '</span>';
+      html += '</div>';
+    });
+    
+    DOM.mediaPreviewContainer.innerHTML = html;
+  }
+
   /** 绑定清空按钮 */
   function bindClearButton() {
     if (!DOM.btnClear) return;
@@ -138,6 +197,16 @@
       if (DOM.inputBody) DOM.inputBody.value = '';
       if (DOM.inputTags) DOM.inputTags.value = '';
       if (DOM.inputMedia) DOM.inputMedia.value = '';
+      if (DOM.mediaCountHint) DOM.mediaCountHint.textContent = '未选择文件';
+      if (DOM.mediaPreviewContainer) DOM.mediaPreviewContainer.innerHTML = '';
+      
+      // 清理对象 URL
+      state.mediaAssets.forEach(function(asset) {
+        if (asset.previewUrl) {
+          URL.revokeObjectURL(asset.previewUrl);
+        }
+      });
+      state.mediaAssets = [];
       if (DOM.titleCounter) DOM.titleCounter.textContent = '0 / 100';
       if (DOM.bodyCounter) DOM.bodyCounter.textContent = '0 字';
 
@@ -182,7 +251,8 @@
     var title = DOM.inputTitle?.value?.trim() || '';
     var body = DOM.inputBody?.value || '';
     var tagsStr = DOM.inputTags?.value || '';
-    var mediaStr = DOM.inputMedia?.value?.trim() || '';
+    // 素材改为结构化数据传递
+    var mediaStr = state.mediaAssets.length > 0 ? ('已选择 ' + state.mediaAssets.length + ' 个素材') : '';
 
     // 第一步：原始内容校验
     var rawMessages = Validator?.validateRawContent(title, body, tagsStr, mediaStr, state.selectedPlatforms) || [];
@@ -239,7 +309,8 @@
 
     // 新增：构建标准统一发布载荷 (PublishPayload) 并渲染
     if (Publisher && Publisher.buildPublishPayload) {
-      state.unifiedPayload = Publisher.buildPublishPayload(state.unifiedContent, state.adaptedContents, 'payload') || null;
+      var payloadOptions = { mediaAssets: state.mediaAssets };
+      state.unifiedPayload = Publisher.buildPublishPayload(state.unifiedContent, state.adaptedContents, 'payload', payloadOptions) || null;
     }
     if (state.unifiedPayload && DOM.payloadCode) {
       DOM.payloadCode.textContent = JSON.stringify(state.unifiedPayload, null, 2);
@@ -766,6 +837,7 @@
     bindClearHistoryButton();
     bindPayloadEvents(); // 新增：绑定载荷交互事件
     bindModeEvents(); // 新增：绑定发布模式切换事件
+    bindMediaUpload(); // 新增：绑定本地素材上传事件
     renderHistory();
     console.log('CreatorBridge 初始化完成 ✓');
   }
