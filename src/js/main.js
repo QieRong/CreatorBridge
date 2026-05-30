@@ -785,13 +785,44 @@
     }
 
     if (DOM.btnTestConnection) {
-      DOM.btnTestConnection.addEventListener('click', function() {
+      DOM.btnTestConnection.addEventListener('click', async function() {
         var url = DOM.inputBaseUrl?.value?.trim() || '';
-        if (!url || !url.startsWith('http')) {
-          showToast('请输入合法的 Base URL (http/https 开头)', 'warning');
+        if (!url) {
+          showToast('网关地址不能为空', 'warning');
           return;
         }
-        showToast('地址格式校验通过，正式请求将在投递环节执行。', 'info');
+        if (!url.startsWith('http')) {
+          showToast('URL 格式错误 (需要 http/https)', 'error');
+          return;
+        }
+        var token = DOM.inputRuntimeToken?.value || '';
+        var checkUrl = url.replace(/\\/$/, '') + '/health';
+        var controller = new AbortController();
+        var timeoutId = setTimeout(function() { controller.abort(); }, 5000); // 5s timeout
+
+        try {
+          showToast('正在测试连接...', 'info', 1500);
+          var headers = {};
+          if (token) headers['Authorization'] = 'Bearer ' + token;
+          var response = await fetch(checkUrl, { method: 'GET', headers: headers, signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            if (response.status === 401 || response.status === 403) throw new Error('鉴权失败 (' + response.status + ')');
+            if (response.status === 404) throw new Error('接口不存在 (' + response.status + ')');
+            throw new Error('HTTP ' + response.status);
+          }
+          showToast('测试通过：连接器工作正常', 'success');
+        } catch (error) {
+          clearTimeout(timeoutId);
+          if (error.name === 'AbortError') {
+            showToast('请求超时，请检查网关是否启动', 'error');
+          } else if (error.message === 'Failed to fetch') {
+            showToast('网络不可达或 CORS 跨域拦截', 'error');
+          } else {
+            showToast('测试连接失败: ' + error.message, 'error');
+          }
+        }
       });
     }
 
