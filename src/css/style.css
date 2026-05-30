@@ -1279,3 +1279,50 @@ body {
   padding: 2px 4px;
   border-radius: 4px;
 }
+
+/* 任务队列样式 */
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.queue-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+.queue-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.queue-item-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+.queue-item-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.queue-item-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.queue-status-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.queue-status-pending { background-color: var(--bg-tertiary); color: var(--text-muted); }
+.queue-status-validating { background-color: rgba(245, 158, 11, 0.1); color: var(--color-warning); }
+.queue-status-publishing { background-color: rgba(59, 130, 246, 0.1); color: var(--color-info); }
+.queue-status-success { background-color: rgba(16, 185, 129, 0.1); color: var(--color-success); }
+.queue-status-failed { background-color: rgba(239, 68, 68, 0.1); color: var(--color-error); }
+

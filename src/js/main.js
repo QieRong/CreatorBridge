@@ -55,6 +55,8 @@
     DOM.btnClearHistory = document.getElementById('btn-clear-history');
     DOM.sectionValidation = document.getElementById('section-validation');
     DOM.sectionPreview = document.getElementById('section-preview');
+    DOM.sectionQueue = document.getElementById('section-queue');
+    DOM.queueList = document.getElementById('queue-list');
     DOM.sectionPublishResult = document.getElementById('section-publish-result');
     DOM.sectionHistory = document.getElementById('section-history');
     DOM.validationList = document.getElementById('validation-list');
@@ -224,6 +226,7 @@
 
       if (DOM.sectionValidation) DOM.sectionValidation.style.display = 'none';
       if (DOM.sectionPreview) DOM.sectionPreview.style.display = 'none';
+      if (DOM.sectionQueue) DOM.sectionQueue.style.display = 'none';
       if (DOM.sectionPublishResult) DOM.sectionPublishResult.style.display = 'none';
       if (DOM.btnPublish) DOM.btnPublish.disabled = true;
       if (DOM.btnExport) DOM.btnExport.disabled = true;
@@ -511,8 +514,8 @@
   /** 处理模拟发布 */
   function handlePublish() {
     // 检查是否已有适配结果
-    if (!state.adaptedContents || state.adaptedContents.length === 0) {
-      showToast('请先点击「一键适配」生成平台内容', 'warning');
+    if (!state.unifiedPayload) {
+      showToast('请先点击「一键适配」生成载荷', 'warning');
       return;
     }
 
@@ -523,32 +526,84 @@
       return;
     }
 
-    // 调用模拟发布
-    var title = state.unifiedContent?.title || '';
-    var result = Publisher?.publishSelectedPlatforms(title, state.adaptedContents);
+    // 调用任务队列
+    if (DOM.sectionPublishResult) DOM.sectionPublishResult.style.display = 'none';
+    if (DOM.sectionQueue) DOM.sectionQueue.style.display = 'block';
+    
+    // 创建队列
+    var success = Publisher.createTaskQueue(
+      state.unifiedPayload,
+      function onProgress(tasks) {
+        renderQueue(tasks);
+      },
+      function onComplete(batchId, tasks) {
+        // 完成后组装结果并保存
+        var title = state.unifiedContent?.title || '无标题';
+        var platforms = tasks.map(function(t) {
+          return {
+            platformId: t.platformId,
+            platformName: t.platformName,
+            status: t.status,
+            message: t.message
+          };
+        });
+        
+        var result = Models.createPublishResult(batchId, title, platforms);
+        state.lastPublishResult = result;
+        StorageMod?.savePublishHistory(result);
+        renderPublishResult(result);
+        renderHistory();
+        
+        var hasFailures = tasks.some(function(t) { return t.status === 'failed'; });
+        if (hasFailures) {
+          showToast('模拟发布完成，但有部分任务失败', 'warning');
+        } else {
+          showToast('模拟发布全部成功！', 'success');
+        }
+        
+        if (DOM.sectionPublishResult) {
+          DOM.sectionPublishResult.style.display = 'block';
+        }
+      }
+    );
 
-    if (!result) {
-      showToast('模拟发布失败', 'error');
-      return;
+    if (success) {
+      if (DOM.sectionQueue) {
+        DOM.sectionQueue.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      // 初次渲染
+      renderQueue(Publisher.getTasks ? Publisher.getTasks() : []);
+      // 启动
+      Publisher.runQueue();
+    } else {
+      showToast('队列创建失败', 'error');
     }
+  }
 
-    state.lastPublishResult = result;
-
-    // 保存到发布历史
-    StorageMod?.savePublishHistory(result);
-
-    // 渲染发布结果
-    renderPublishResult(result);
-
-    // 更新发布历史
-    renderHistory();
-
-    showToast('模拟发布成功！批次号：' + result.batchId, 'success');
-
-    // 滚动到发布结果区
-    if (DOM.sectionPublishResult) {
-      DOM.sectionPublishResult.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+  /** 渲染任务队列 */
+  function renderQueue(tasks) {
+    if (!DOM.queueList) return;
+    
+    // 如果 publisher 暴露了 getTasks，但是回调里已经传了，直接用
+    if (!tasks) return;
+    
+    var html = '';
+    tasks.forEach(function(task) {
+      html += '<div class="queue-item">';
+      html += '  <div class="queue-item-info">';
+      html += '    <div class="queue-item-title">' + Utils.escapeHTML(task.platformName) + '</div>';
+      html += '    <div class="queue-item-desc">目标: ' + Utils.escapeHTML(task.payloadSummary.title) + '</div>';
+      html += '  </div>';
+      html += '  <div class="queue-item-status">';
+      html += '    <span class="queue-status-badge queue-status-' + task.status + '">' + Utils.escapeHTML(task.message) + '</span>';
+      if (task.status === 'failed') {
+        html += '    <button class="btn btn-outline btn-sm" onclick="App.retryTask(\'' + task.taskId + '\')">重试</button>';
+      }
+      html += '  </div>';
+      html += '</div>';
+    });
+    
+    DOM.queueList.innerHTML = html;
   }
 
   // ========== 渲染：发布结果 ==========
@@ -847,7 +902,12 @@
   // 暴露全局方法
   window.App = {
     showToast: showToast,
-    getState: function () { return state; }
+    getState: function () { return state; },
+    retryTask: function(taskId) {
+      if (Publisher && Publisher.retryTask) {
+        Publisher.retryTask(taskId);
+      }
+    }
   };
 
 })();
