@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="CreatorBridge 多平台内容适配发布助手 - 写一次，到处发。自动适配公众号、知乎、B站、小红书等平台格式。">
   <title>CreatorBridge - 多平台内容适配发布助手</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="src/css/style.css">
 </head>
 <body>
@@ -17,12 +14,11 @@
     <div class="container">
       <div class="header-content">
         <div class="logo-area">
-          <span class="logo-icon">🌉</span>
           <h1 class="logo-text">CreatorBridge</h1>
         </div>
         <p class="header-tagline">写一次，到处发 — 多平台内容适配发布助手</p>
         <div class="header-badge">
-          <span class="badge badge-mock">⚡ 模拟发布模式</span>
+          <span class="badge badge-mock">模拟发布模式</span>
         </div>
       </div>
     </div>
@@ -34,7 +30,7 @@
       <!-- ===== 第一栏：内容输入区 ===== -->
       <section class="section section-input" id="section-input">
         <div class="section-header">
-          <h2 class="section-title">📝 内容输入</h2>
+          <h2 class="section-title">内容输入</h2>
           <p class="section-desc">输入你的原始内容，系统将自动适配为各平台专属版本</p>
         </div>
         <div class="card">
@@ -66,7 +62,7 @@
       <!-- ===== 第二栏：平台选择和操作按钮 ===== -->
       <section class="section section-platform" id="section-platform">
         <div class="section-header">
-          <h2 class="section-title">🎯 平台选择与操作</h2>
+          <h2 class="section-title">平台选择与操作</h2>
           <p class="section-desc">选择需要适配的平台，然后一键生成多平台内容</p>
         </div>
         <div class="card">
@@ -75,16 +71,16 @@
           </div>
           <div class="action-bar">
             <button class="btn btn-primary btn-lg" id="btn-adapt" title="一键适配所有选中的平台">
-              🚀 一键适配
+              一键适配
             </button>
             <button class="btn btn-success btn-lg" id="btn-publish" title="模拟发布到选中的平台" disabled>
-              📤 模拟发布
+              模拟发布
             </button>
             <button class="btn btn-secondary" id="btn-export" title="导出所有平台内容" disabled>
-              💾 导出全部
+              导出全部
             </button>
             <button class="btn btn-ghost" id="btn-clear" title="清空所有输入内容">
-              🗑️ 清空输入
+              清空输入
             </button>
           </div>
         </div>
@@ -93,7 +89,7 @@
       <!-- ===== 第三栏：格式检查结果 ===== -->
       <section class="section section-validation" id="section-validation" style="display: none;">
         <div class="section-header">
-          <h2 class="section-title">🔍 格式检查</h2>
+          <h2 class="section-title">格式检查</h2>
           <p class="section-desc">系统已自动检测内容是否符合各平台发布要求</p>
         </div>
         <div class="card">
@@ -106,7 +102,7 @@
       <!-- ===== 第四栏：多平台预览区 ===== -->
       <section class="section section-preview" id="section-preview" style="display: none;">
         <div class="section-header">
-          <h2 class="section-title">👁️ 多平台预览</h2>
+          <h2 class="section-title">多平台预览</h2>
           <p class="section-desc">查看各平台适配后的内容效果，支持一键复制</p>
         </div>
         <div class="preview-grid" id="preview-grid">
@@ -117,14 +113,13 @@
       <!-- ===== 新增栏：发布模式与连接器预留 ===== -->
       <section class="section section-mode" id="section-mode">
         <div class="section-header">
-          <h2 class="section-title">🔌 发布模式与连接器预留</h2>
-          <p class="section-desc">配置当前发布的工作模式，支持模拟验证、数据导出及未来自建后端连接器对接</p>
+          <h2 class="section-title">发布模式与连接器预留</h2>
+          <p class="section-desc">配置当前发布的工作模式，支持模拟验证、数据导出及自建后端连接器对接设计</p>
         </div>
         <div class="card">
           <div class="mode-selector">
             <label class="mode-option active" data-mode="mock">
               <input type="radio" name="publish-mode" value="mock" checked>
-              <span class="mode-icon">⚡</span>
               <div class="mode-info">
                 <span class="mode-name">Mock 模拟发布</span>
                 <span class="mode-status">当前默认演示</span>
@@ -132,7 +127,6 @@
             </label>
             <label class="mode-option" data-mode="payload">
               <input type="radio" name="publish-mode" value="payload">
-              <span class="mode-icon">📦</span>
               <div class="mode-info">
                 <span class="mode-name">Payload JSON 导出</span>
                 <span class="mode-status">当前支持</span>
@@ -140,7 +134,6 @@
             </label>
             <label class="mode-option" data-mode="connector">
               <input type="radio" name="publish-mode" value="connector">
-              <span class="mode-icon">🔌</span>
               <div class="mode-info">
                 <span class="mode-name">Connector 自定义连接器</span>
                 <span class="mode-status">设计预留</span>
@@ -151,8 +144,8 @@
           <!-- Connector 配置说明面板 -->
           <div class="connector-panel" id="connector-panel" style="display: none;">
             <div class="connector-panel-header">
-              <h4>🛠️ Connector 自定义连接器配置（设计预留）</h4>
-              <p class="panel-warning-text">⚠️ 提示：当前阶段仅展示配置入口，暂不发起真实网络请求，后续可扩展。</p>
+              <h4>Connector 自定义连接器配置（设计预留）</h4>
+              <p class="panel-warning-text">提示：当前阶段不发起真实网络请求，仅展示配置入口，便于后续接入。</p>
             </div>
             
             <div class="form-group">
@@ -172,13 +165,13 @@
             </div>
 
             <div class="alert-box alert-safety">
-              <p class="alert-title">🔒 安全保护与架构扩展声明</p>
+              <p class="alert-title">安全保护与架构扩展声明</p>
               <ul class="alert-list">
                 <li>真实发布需要用户自建后端中转服务以避免在前端保存敏感凭证。</li>
                 <li>当前前端项目不内置微信、知乎、B站、小红书等真实发布接口。</li>
                 <li>当前阶段不发起 fetch、XMLHttpRequest 或其他真实网络请求。</li>
                 <li>真实发布取决于平台授权、接口权限和后端自建服务的具体实现。</li>
-                <li>本工具通过标准统一发布载荷 (PublishPayload) 结构保持向后兼容性。</li>
+                <li>本工具通过标准统一发布载荷 (PublishPayload) 结构保持兼容性。</li>
               </ul>
             </div>
           </div>
@@ -188,13 +181,13 @@
       <!-- ===== 新增栏：Payload JSON 载荷预览区 ===== -->
       <section class="section section-payload" id="section-payload">
         <div class="section-header">
-          <h2 class="section-title">📦 统一发布载荷 (PublishPayload)</h2>
+          <h2 class="section-title">统一发布载荷 (PublishPayload)</h2>
           <p class="section-desc">查看一键适配生成的标准 JSON 载荷数据，支持导出及外部服务对接</p>
         </div>
         <div class="card">
           <div class="payload-actions">
-            <button class="btn btn-primary" id="btn-copy-payload" title="复制格式化 JSON 载荷" disabled>📋 复制 Payload</button>
-            <button class="btn btn-success" id="btn-export-payload" title="导出 JSON 文本文件" disabled>💾 导出 Payload JSON</button>
+            <button class="btn btn-primary" id="btn-copy-payload" title="复制格式化 JSON 载荷" disabled>复制 Payload</button>
+            <button class="btn btn-success" id="btn-export-payload" title="导出 JSON 文本文件" disabled>导出 Payload JSON</button>
           </div>
           <div class="payload-preview-container">
             <pre class="payload-pre"><code id="payload-code">请先完成一键适配，以生成标准发布载荷。</code></pre>
@@ -205,7 +198,7 @@
       <!-- ===== 第五栏：模拟发布结果区 ===== -->
       <section class="section section-publish-result" id="section-publish-result" style="display: none;">
         <div class="section-header">
-          <h2 class="section-title">📊 发布结果</h2>
+          <h2 class="section-title">发布结果</h2>
           <p class="section-desc">本次模拟发布的详细结果</p>
         </div>
         <div class="card" id="publish-result-card">
@@ -216,16 +209,16 @@
       <!-- ===== 第六栏：发布历史区 ===== -->
       <section class="section section-history" id="section-history">
         <div class="section-header">
-          <h2 class="section-title">📋 发布历史</h2>
+          <h2 class="section-title">发布历史</h2>
           <p class="section-desc">查看以往的模拟发布记录</p>
           <button class="btn btn-ghost btn-sm" id="btn-clear-history" title="清空所有发布历史">
-            🗑️ 清空历史
+            清空历史
           </button>
         </div>
         <div class="card">
           <div class="history-list" id="history-list">
             <div class="empty-state" id="history-empty">
-              <span class="empty-icon">📭</span>
+              <span class="empty-icon"></span>
               <p>暂无发布历史记录</p>
             </div>
           </div>
@@ -242,7 +235,7 @@
         CreatorBridge © 2026 | 暑期实训营 · 题目二：多平台内容发布工具
       </p>
       <p class="footer-note">
-        ⚠️ 本工具仅提供模拟发布功能，不连接任何真实平台接口，不保存任何平台密钥。
+        本工具仅提供模拟发布功能，不连接任何真实平台接口，不保存任何平台密钥。
       </p>
     </div>
   </footer>

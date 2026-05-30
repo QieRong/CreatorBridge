@@ -21,13 +21,13 @@
 | 步序 | 校验项名称 | 验证内容 | 自动执行动作与方法 | 测试结果 | 状态 | 详细信息 / 抓取数据 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **1** | **页面显示与标题** | 确认页面正常显示，Logo及结构完好 | 抓取 `document.title` 与 `.logo-text` | 成功匹配 | 已验证（Chrome Headless + CDP 自动化回归） | Title: `CreatorBridge - 多平台内容适配发布助手`<br>Logo: `CreatorBridge` |
-| **2** | **默认模式 Badge** | 确认顶部的 Badge 默认模式为 Mock 模拟发布 | 读取 `.header-badge .badge` 文本节点 | 默认正确 | 已验证（Chrome Headless + CDP 自动化回归） | 顶部 Badge 默认显示: `⚡ 模拟发布模式` |
-| **3** | **Payload 模式联动** | 切换到 Payload 模式，顶部 Badge 联动更改 | 点击对应单选框，读取 Badge 文字及底部 Code 区域 | 正常联动 | 已验证（Chrome Headless + CDP 自动化回归） | 顶部 Badge 变为 `📦 Payload 导出模式`<br>且底部载荷 Code 区域结构完好 |
-| **4** | **Connector 模式切换** | 切换到 Connector 自定义连接器模式 | 点击对应单选框，读取顶部 Badge 文字 | 正常切换 | 已验证（Chrome Headless + CDP 自动化回归） | 顶部 Badge 联动更改为: `🔌 连接器预留模式` |
+| **2** | **默认模式 Badge** | 确认顶部的 Badge 默认模式为 Mock 模拟发布 | 读取 `.header-badge .badge` 文本节点 | 默认正确 | 已验证（Chrome Headless + CDP 自动化回归） | 顶部 Badge 默认显示: `模拟发布模式` |
+| **3** | **Payload 模式联动** | 切换到 Payload 模式，顶部 Badge 联动更改 | 点击对应单选框，读取 Badge 文字及底部 Code 区域 | 正常联动 | 已验证（Chrome Headless + CDP 自动化回归） | 顶部 Badge 变为 `Payload 导出模式`<br>且底部载荷 Code 区域结构完好 |
+| **4** | **Connector 模式切换** | 切换到 Connector 自定义连接器模式 | 点击对应单选框，读取顶部 Badge 文字 | 正常切换 | 已验证（Chrome Headless + CDP 自动化回归） | 顶部 Badge 联动更改为: `连接器预留模式` |
 | **5** | **API 输入框展现** | 确认 API Base URL 预留输入框正常展现 | 读取 `#connector-url` display 及输入框存在状态 | 展现正常 | 已验证（Chrome Headless + CDP 自动化回归） | 面板显示: `block`<br>且 `#connector-url` 输入框在页面上正常交互 |
-| **6** | **安全及边界说明** | 确认页面有“不发起真实网络请求”的明确安全说明 | 抓取并检索 `#connector-panel` 的内文 | 匹配通过 | 已验证（Chrome Headless + CDP 自动化回归） | 检索匹配: `当前阶段仅展示配置入口，暂不发起真实网络请求，后续可扩展。` |
+| **6** | **安全及边界说明** | 确认页面有“不发起真实网络请求”的明确安全说明 | 抓取并检索 `#connector-panel` 的内文 | 匹配通过 | 已验证（Chrome Headless + CDP 自动化回归） | 检索匹配: `当前阶段仅展示配置入口，暂不发起真实网络请求，便于后续接入。` |
 | **7** | **敏感凭证保护** | 确认页面没有 Token、Cookie、账号密码等输入框 | 全页面扫描 Input 和 Textarea 属性 | 未检测出敏感输入 | 已验证（Chrome Headless + CDP 自动化回归） | 检索敏感属性关键字 (token/cookie/password等)，检出数: **0** |
-| **8** | **非持久化安全校验** | 输入 API 并刷新，确认清空且未存入 localStorage | 填入 API 并触发 `Page.reload` 刷新，检查 storage | 清空隔离 | 已验证（Chrome Headless + CDP 自动化回归） | 刷新后输入框已被清空 (`value = ""`) 且 localStorage 无持久化残留 |
+| **8** | **非持久化安全校验** | 输入 API 并刷新，确认清空且未存入 localStorage | 填入 API 并触发 `Page.reload` 刷新，检查 storage | 清空隔离 | 已验证（Chrome Headless + CDP 自动化回归） | 刷新后输入框已被清空 (`value = ""`) 且 localStorage 未发现持久化残留 |
 | **9** | **表单内容输入** | 切换回 Mock 模式并输入标题、正文、标签 | 填充表单 Input 值并分发实时 `input` 事件 | 输入成功 | 已验证（Chrome Headless + CDP 自动化回归） | 标题: `测试标题`<br>标签: `测试,标签`<br>字数统计正常同步刷新 |
 | **10** | **平台选择** | 勾选公众号、知乎、B站、小红书 | 模拟点击 `.platform-item .platform-name` 元素 | 选中成功 | 已验证（Chrome Headless + CDP 自动化回归） | 选中平台: `[wechat, zhihu, bilibili, xiaohongshu]` |
 | **11** | **一键适配逻辑** | 触发一键适配并解锁按钮 | 触发 `#btn-adapt` 点击，检测按钮禁用状态 | 成功适配 | 已验证（Chrome Headless + CDP 自动化回归） | 复制 Payload、导出 Payload 及模拟发布按钮全部解锁 (`disabled = false`) |
@@ -68,11 +68,11 @@
 - **捕获的请求总数**: 4 个 (全部为 `file:///` 本地静态 HTML/CSS/JS 资源加载)。
 - **发往外部 API/远程端点的真实请求数**: **0 个** (验证纯本地化沙箱模拟发布)。
 
-该结果确认：“当前阶段仅展示配置入口，暂不发起真实网络请求，后续可扩展。” 安全边界声明真实可靠。
+该结果确认：“当前阶段仅展示配置入口，暂不发起真实网络请求，便于后续接入。” 安全边界声明真实可靠。
 
 ### 3.4 运行期 Console 零报错监控
 
-测试工具链开启了对 Chrome 内核事件的全局长连接订阅。在自动化交互操作（高频输入、多平台批量切换、点击一键适配、点击下载文件、模拟发布操作、清空历史等）中，系统未触发 any JavaScript 报错或 Uncaught Exception。这表明项目在 `utils.js`、`models.js`、`adapters.js`、`validator.js`、`publisher.js` 上的解耦以及可选链防御性编程达到了预期要求。
+测试工具链开启了对 Chrome 内核事件的全局长连接订阅。在自动化交互操作（高频输入、多平台批量切换、点击一键适配、点击下载文件、模拟发布操作、清空历史等）中，系统未触发 any JavaScript 报错或 Uncaught Exception。这表明项目在 `utils.js`、`models.js`、`adapters.js` 、`validator.js` 、`publisher.js` 上的解耦以及可选链防御性编程达到了预期要求。
 
 ---
 
@@ -86,13 +86,13 @@
 | **14** | **API Base URL 输入框** | Connector 模式下预留输入框正常展示且可输入 | 读取并操作 `#connector-url` 的输入状态 | 交互正常 | 已验证（Chrome Headless + CDP 自动化回归） | 占位提示符匹配: `https://api.yourdomain.com/publish`，输入文本及事件响应正常 |
 | **15** | **模式边界与安全说明** | 安全说明和自建中转提示文案清晰无误 | 读取 `.alert-safety` 以及面板文案节点 | 正常展示 | 已验证（Chrome Headless + CDP 自动化回归） | 明确且清晰地指出本阶段不发起请求、不内置真实发布接口，给创作者充足的安全提示 |
 | **16** | **凭证保护安全策略** | 确认页面不提供 Token、Cookie、AppSecret 输入框 | 检索 input 节点类型及 id 属性 | 未检测出敏感输入 | 已验证（Chrome Headless + CDP 自动化回归） | 无敏感参数输入框，从物理上隔离了前端保存敏感凭证，避免在前端保存敏感凭证 |
-| **17** | **无敏感参数持久化** | 确认 API Base URL 不写入 localStorage | 扫描 `localStorage.setItem` 并监听切换事件 | 存储隔离 | 已验证（Chrome Headless + CDP 自动化回归） | API Base URL 填入后在页面重载后归零，无任何持久化残留 |
+| **17** | **无敏感参数持久化** | 确认 API Base URL 不写入 localStorage | 扫描 `localStorage.setItem` 并监听切换事件 | 存储隔离 | 已验证（Chrome Headless + CDP 自动化回归） | API Base URL 填入后在页面重载后归零，未发现持久化残留 |
 | **18** | **Mock 发布流程兼容** | 切换模式与配置 URL 不影响原有模拟发布和 Payload 导出 | 触发 `#btn-publish` 并检验 `state.unifiedPayload` | 保持兼容 | 已验证（Chrome Headless + CDP 自动化回归） | 模式切换正常，Mock 模拟发布大主线逻辑及历史记录归档均保持兼容 |
 
 ---
 
 ## 5. 测试结论与交付评定
 
-本轮对 Connector 模式说明 UI 进行了回归测试，覆盖模式切换、API Base URL 预留输入框展示、安全提示、Payload 导出兼容性、Mock 模拟发布兼容性和控制台异常监听。当前测试通过，暂未发现影响主流程的问题。Connector 模式仍为设计预留，不发起真实网络请求。
+本轮对 Connector 模式说明 UI 进行了回归测试，覆盖模式切换、API Base URL 预留输入框展示、安全提示、Payload 导出兼容性、Mock 模拟发布兼容性和控制台异常监听。当前测试通过，未发现影响主流程的问题。Connector 模式仍为设计预留，不发起真实网络请求。
 
 本阶段范围内程序运行状况良好，未检出 JavaScript 控制台异常与阻碍性缺陷。

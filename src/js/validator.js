@@ -131,25 +131,25 @@
       if (content.platformId === 'xiaohongshu') {
         if (titleLen > 20) {
           messages.push(buildValidationMessage('error',
-            '🚨 小红书标题不能超过 20 个字！当前 ' + titleLen + ' 字，请立刻修改。', '小红书'));
+            '小红书标题不能超过 20 个字！当前 ' + titleLen + ' 字，请立刻修改。', '小红书'));
         }
         if (bodyLen > 1000) {
           messages.push(buildValidationMessage('error',
-            '🚨 小红书正文最大支持 1000 字！当前 ' + bodyLen + ' 字，超出无法发布。', '小红书'));
+            '小红书正文最大支持 1000 字！当前 ' + bodyLen + ' 字，超出无法发布。', '小红书'));
         } else if (bodyLen > 800) {
           messages.push(buildValidationMessage('warning',
-            '⚠️ 小红书内容逼近 1000 字上限（' + bodyLen + '字），建议适当精简。', '小红书'));
+            '小红书内容逼近 1000 字上限（' + bodyLen + '字），建议适当精简。', '小红书'));
         }
         if (tagCount === 0) {
           messages.push(buildValidationMessage('warning',
-            '💡 小红书建议至少添加 1 个话题标签以获取系统流量推荐。', '小红书'));
+            '小红书建议至少添加 1 个话题标签以获取系统流量推荐。', '小红书'));
         }
       }
     });
 
     // 如果没有任何问题，给一个成功提示
     if (messages.length === 0) {
-      messages.push(buildValidationMessage('success', '✅ 所有平台内容格式检查通过！可以进行模拟发布。'));
+      messages.push(buildValidationMessage('success', '所有平台内容格式检查通过！可以进行模拟发布。'));
     }
 
     return messages;
