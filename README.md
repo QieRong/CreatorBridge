@@ -257,8 +257,6 @@ npm run dist
 
 * 详见 [docs/test-report.md](docs/test-report.md) 和 [docs/design.md](docs/design.md)。
 * 本项目网页端无 npm 运行依赖，可直接打开 index.html 使用；桌面端为可选能力，若使用 Electron 启动或打包，需要执行 npm install 安装 package.json 中声明的 Electron 相关依赖。本阶段未新增依赖。
-* 外部资源：Google Fonts（Inter 和 Noto Sans SC 字体，仅用于界面渲染美化，非必需）。
-
 ## AI 辅助说明
 
 本项目允许使用 AI 辅助完成需求拆解、代码结构规划、部分代码生成、文档初稿整理和问题排查。项目的功能选择、代码整合、运行测试、最终提交和演示录制由本人完成。AI 生成内容经过人工检查和修改，未直接复制第三方项目代码。
