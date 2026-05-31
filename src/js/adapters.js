@@ -449,6 +449,7 @@
     adaptToZhihu: adaptToZhihu,
     adaptToBilibili: adaptToBilibili,
     adaptToXiaohongshu: adaptToXiaohongshu,
+    adaptToWeibo: adaptToWeibo,
     adaptContentForPlatform: adaptContentForPlatform,
     adaptContentForSelectedPlatforms: adaptContentForSelectedPlatforms
   };

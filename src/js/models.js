@@ -99,12 +99,14 @@
    * @param {string} batchId - 发布批次号，如 'PUB-20260529-001'
    * @param {string} title - 原始内容标题
    * @param {Array<{platformId: string, platformName: string, status: string, message: string}>} platforms - 各平台发布状态
+   * @param {string} [mode] - 发布模式，如 'mock' 或 'connector'
    * @returns {object} 发布结果对象
    */
-  function createPublishResult(batchId, title, platforms) {
+  function createPublishResult(batchId, title, platforms, mode) {
     var safeBatchId = (batchId != null) ? String(batchId) : '';
     var safeTitle = (title != null) ? String(title) : '';
     var safePlatforms = Array.isArray(platforms) ? platforms : [];
+    var safeMode = normalizePublishMode(mode);
 
     // 标准化每个平台的发布状态对象
     var normalizedPlatforms = safePlatforms.map(function (p) {
@@ -119,11 +121,19 @@
       };
     });
 
+    var hasFailedTask = normalizedPlatforms.some(function (p) {
+      return p.status === 'failed';
+    });
+    var allTasksSucceeded = normalizedPlatforms.length > 0 && normalizedPlatforms.every(function (p) {
+      return p.status === 'success';
+    });
+    var batchStatus = hasFailedTask ? 'failed' : (allTasksSucceeded ? 'success' : 'pending');
+
     return {
       batchId: safeBatchId,
       title: safeTitle,
-      mode: 'mock',
-      status: 'success',
+      mode: safeMode,
+      status: batchStatus,
       publishedAt: new Date().toLocaleString('zh-CN'),
       platforms: normalizedPlatforms
     };
@@ -178,7 +188,8 @@
       wechat: { enabled: false, endpoint: '/publish/wechat', publishType: 'draft' },
       zhihu: { enabled: false, endpoint: '/publish/zhihu', publishType: 'draft' },
       bilibili: { enabled: false, endpoint: '/publish/bilibili', publishType: 'article' },
-      xiaohongshu: { enabled: false, endpoint: '/publish/xiaohongshu', publishType: 'note' }
+      xiaohongshu: { enabled: false, endpoint: '/publish/xiaohongshu', publishType: 'note' },
+      weibo: { enabled: false, endpoint: '/publish/weibo', publishType: 'post' }
     };
 
     var config = {
@@ -219,7 +230,7 @@
       // 安全覆盖 platformMapping
       if (options.platformMapping != null && typeof options.platformMapping === 'object') {
         config.platformMapping = {};
-        var platforms = ['wechat', 'zhihu', 'bilibili', 'xiaohongshu'];
+        var platforms = ['wechat', 'zhihu', 'bilibili', 'xiaohongshu', 'weibo'];
         platforms.forEach(function (platform) {
           var defaultItem = defaultPlatformMapping[platform];
           var optItem = options.platformMapping[platform];

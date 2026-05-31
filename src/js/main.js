@@ -671,11 +671,11 @@
           var platforms = tasks.map(function(t) {
             return { platformId: t.platformId, platformName: t.platformName, status: t.status, message: t.message };
           });
-          var result = Models.createPublishResult(batchId, title, platforms);
+          var result = Models.createPublishResult(batchId, title, platforms, mode);
           StorageMod?.savePublishHistory(result);
           renderHistory();
           var modeStr = state.connectorConfig.enabled ? '连接器分发' : '模拟发布';
-          showToast(modeStr + '流程结束', 'success');
+          showToast(modeStr + '流程结束', result.status === 'success' ? 'success' : 'warning');
         },
         mode, baseUrl, token
       );
@@ -727,6 +727,8 @@
     var html = '';
     history.forEach(function (record) {
       var badges = '';
+      var modeText = record.mode === 'connector' ? 'Connector' : 'Mock';
+      var statusText = record.status === 'success' ? '成功' : (record.status === 'failed' ? '失败' : '处理中');
       if (record.platforms) {
         record.platforms.forEach(function(p) {
           badges += '<span class="badge">' + Utils.escapeHTML(p.platformName) + '</span>';
@@ -735,6 +737,7 @@
       html += '<div class="history-item">';
       html += '  <div class="history-batch">' + Utils.escapeHTML(record.batchId) + '</div>';
       html += '  <div class="history-title">' + Utils.escapeHTML(record.title) + '</div>';
+      html += '  <div class="history-meta">' + Utils.escapeHTML(modeText) + ' · ' + Utils.escapeHTML(statusText) + ' · ' + Utils.escapeHTML(record.publishedAt || '时间未知') + '</div>';
       html += '  <div class="history-platforms">' + badges + '</div>';
       html += '</div>';
     });
