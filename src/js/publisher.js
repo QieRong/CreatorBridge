@@ -363,6 +363,9 @@
       return {};
     },
     publish: function (payload, config, runtimeToken) {
+      // 【注意】此 publish 仅为向下兼容旧版接口的预留设计。
+      // 真实 UI 的 Connector 分发已改为通过 executeQueue -> runConnectorQueue -> sendToConnector 进行真实的请求流转，
+      // 不再走此处的静态成功返回。
       var batchId = payload.batchId || createBatchId();
       var title = (payload.source && payload.source.title) || '无标题';
       var targets = payload.targets || [];
