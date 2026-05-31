@@ -190,6 +190,36 @@ body {
   }
 }
 
+@media (max-width: 768px) {
+  .header-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .header-right {
+    flex-wrap: wrap;
+  }
+  .stats-container {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .stat-card {
+    flex: 1 1 40%;
+  }
+  .app-header {
+    padding: 12px;
+  }
+  .stats-bar {
+    padding: 12px;
+  }
+  .app-main {
+    padding: 12px;
+  }
+  .workspace-grid {
+    gap: 12px;
+  }
+}
+
 /* 左侧栏 & 右侧栏内部滚动 */
 .workspace-left, .workspace-right {
   display: flex;
