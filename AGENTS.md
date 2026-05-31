@@ -2,7 +2,7 @@
 
 ## 1. 项目背景
 
-本项目用于参加七牛云暑期实训营第二批作品提交，选择题目为：
+本项目用于参加暑期实训营第二批作品提交，选择题目为：
 
 **题目二：多平台内容发布工具**
 
@@ -35,11 +35,15 @@
 
 ## 4. 重要边界
 
+## 反夸张与真实性约束
+
+所有代码、界面文案、README、PR 描述和 commit 说明必须保持克制、真实、可验证；禁止使用夸张营销词、虚构能力、虚构数据或暗示未实现功能，尤其不得把 Mock 发布、Payload 导出或连接器预留描述成真实平台发布能力。
+
 ### 4.1 本项目要做
 
 1. 原始内容输入。
 2. 内容结构化处理。
-3. 公众号、知乎、B站、小红书四个平台适配。
+3. 公众号、知乎、B站、小红书、微博五个平台适配，其中微博用于展示适配器扩展能力。
 4. 多平台预览。
 5. 格式检查。
 6. 单平台复制。
@@ -55,7 +59,7 @@
 
 1. 不做真实发布接口。
 2. 不对接微信公众号、知乎、B站、小红书真实 API。
-3. 不要求用户填写真实账号、密码、Cookie、Token、AppSecret。
+3. 不要求用户填写真实平台账号、密码、Cookie、长期 Token、AppSecret。Connector 模式仅可选填写当前页面内存中的 Runtime Token。
 4. 不做爬虫登录。
 5. 不自动登录任何平台。
 6. 不上传内容到真实平台。
@@ -158,7 +162,7 @@ MVP 包含：
    * B站
    * 小红书
 3. 一键适配
-   * 将一份原始内容转换为四个平台版本
+   * 将一份原始内容转换为五个平台版本
 4. 平台预览
    * 每个平台独立卡片展示
 5. 格式检查
@@ -178,22 +182,20 @@ MVP 包含：
    * 清空历史
 9. 文档
    * README.md
-   * docs/design.md
-   * docs/test-report.md
-   * docs/demo-script.md
+   * TEST_REPORT.md
+   * README 中的 Demo 视频链接占位
 
 ## 8. 项目文件结构
 
 推荐结构：
 
 ```text
-creator-bridge/
-├─ AGENTS.md
-├─ README.md
-├─ index.html
+CreatorBridge/
 ├─ src/
 │  ├─ css/
 │  │  └─ style.css
+│  ├─ electron/
+│  │  └─ main.js
 │  └─ js/
 │     ├─ main.js
 │     ├─ models.js
@@ -203,22 +205,16 @@ creator-bridge/
 │     ├─ publisher.js
 │     ├─ storage.js
 │     └─ utils.js
-└─ docs/
-   ├─ design.md
-   ├─ test-report.md
-   └─ demo-script.md
-```
-
-后续如果确认要打包 EXE，再增加：
-
-```text
+├─ .gitignore
+├─ AGENTS.md
+├─ index.html
 ├─ package.json
-└─ src/
-   └─ electron/
-      └─ main.js
+├─ package-lock.json
+├─ README.md
+└─ TEST_REPORT.md
 ```
 
-注意：Electron 是后续加分项，不是第一阶段必做项。
+注意：最终公开仓库根目录只保留以上内容。设计说明并入 README，测试说明集中在 TEST_REPORT.md；Demo 脚本仅作为本地录制准备材料，不提交到仓库。Electron 是可选加分项，不能影响网页版本演示。
 
 ## 9. 各文件职责
 
@@ -513,12 +509,13 @@ const PlatformAdapter = {
 };
 ```
 
-四个平台分别实现：
+五个平台分别实现：
 
 1. WechatAdapter
 2. ZhihuAdapter
 3. BilibiliAdapter
 4. XiaohongshuAdapter
+5. WeiboAdapter
 
 新增平台流程：
 
@@ -724,23 +721,7 @@ README 和 design.md 中必须说明：
 17. 不足与未来优化。
 18. Demo 视频链接占位。
 
-### 17.2 docs/design.md
-
-必须包含：
-
-1. 需求背景。
-2. 目标用户。
-3. 使用场景。
-4. 功能模块说明。
-5. 数据流说明。
-6. UnifiedContent 数据模型。
-7. PlatformAdapter 架构设计。
-8. MockPublisher 设计。
-9. 新平台扩展流程。
-10. 异常情况处理。
-11. 未来真实发布扩展方案。
-
-### 17.3 docs/test-report.md
+### 17.2 TEST_REPORT.md
 
 必须包含：
 
@@ -758,18 +739,18 @@ README 和 design.md 中必须说明：
 12. 异常输入测试。
 13. 测试结论。
 
-### 17.4 docs/demo-script.md
+### 17.3 Demo 视频
 
-必须包含 2 分钟以内 demo 脚本。
+必须准备 2 分钟以内 Demo 视频。录制脚本可以保留在本地，但不要提交到公开仓库。
 
 演示顺序：
 
 1. 展示项目首页。
 2. 说明项目解决“写一次，到处发”的问题。
 3. 输入一篇原始内容。
-4. 选择公众号、知乎、B站、小红书。
+4. 选择公众号、知乎、B站、小红书、微博。
 5. 点击一键适配。
-6. 展示四个平台预览差异。
+6. 展示五个平台预览差异。
 7. 展示格式检查结果。
 8. 复制某个平台内容。
 9. 点击模拟发布。
@@ -796,38 +777,38 @@ README 和 design.md 中必须说明：
 第一阶段：
 
 ```text
-init: create creator bridge project structure
-docs: add project background and feature scope
-docs: add initial design document
-feat: add base page layout
+init: 创建 CreatorBridge 项目结构
+docs: 补充项目背景和功能边界
+docs: 补充初始设计说明
+feat: 新增基础页面布局
 ```
 
 第二阶段：
 
 ```text
-feat: add unified content model
-feat: add platform configuration
-feat: implement platform adapters
-feat: render platform preview cards
-feat: add content validation rules
+feat: 新增统一内容模型
+feat: 新增平台配置
+feat: 实现平台适配器
+feat: 渲染平台预览卡片
+feat: 新增内容校验规则
 ```
 
 第三阶段：
 
 ```text
-feat: add mock publisher
-feat: save publish history with localStorage
-feat: add copy actions
-fix: handle empty content and no platform selected
+feat: 新增 Mock 发布器
+feat: 使用 localStorage 保存发布历史
+feat: 新增复制操作
+fix: 处理内容为空和未选择平台的情况
 ```
 
 第四阶段：
 
 ```text
-style: improve responsive layout and preview cards
-docs: add test report and demo script
-docs: update README with usage and architecture
-chore: prepare final submission materials
+style: 优化响应式布局和预览卡片
+docs: 补充测试报告
+docs: 更新 README 使用说明和架构设计
+chore: 整理最终提交材料
 ```
 
 每个 PR 描述必须包含：
@@ -842,7 +823,7 @@ chore: prepare final submission materials
 PR 描述示例：
 
 ```text
-本次 PR 完成 CreatorBridge 项目基础结构、README 初版、设计文档初版和基础页面布局。主要新增 index.html、src/css/style.css、docs/design.md 等文件，明确项目定位、功能范围和平台适配器设计思路。本次未新增第三方依赖，已在本地浏览器完成页面打开测试。AI 仅用于辅助需求拆解、代码结构规划和文档初稿整理，最终内容由本人检查和调整。
+本次 PR 完成 CreatorBridge 项目基础结构、README 初版和基础页面布局。主要新增 index.html、src/css/style.css、README.md 等文件，明确项目定位、功能范围和平台适配器设计思路。本次未新增第三方依赖，已在本地浏览器完成页面打开测试。AI 仅用于辅助需求拆解、代码结构规划和文档初稿整理，最终内容由本人检查和调整。
 ```
 
 ## 19. 调研要求
@@ -888,7 +869,7 @@ electron content editor
 4. Electron 打包方式，仅在需要 EXE 时。
 5. 内容工具类项目常见交互方式。
 
-调研结论写入 README 或 docs/design.md 的“参考与调研说明”部分，注意不要写成复制来源。
+调研结论写入 README 的“参考与调研说明”部分，注意不要写成复制来源。
 
 ## 20. AI 辅助说明
 
@@ -954,7 +935,7 @@ Electron 是可选加分项，不是第一优先级。
 5. 标签拆分正常。
 6. 平台选择正常。
 7. 一键适配正常。
-8. 四个平台内容有明显差异。
+8. 五个平台内容有明显差异。
 9. 格式检查能显示 error、warning、info。
 10. 复制功能可用。
 11. 模拟发布可用。
@@ -962,9 +943,9 @@ Electron 是可选加分项，不是第一优先级。
 13. 发布历史可保存。
 14. 发布历史可清空。
 15. README.md 完整。
-16. docs/design.md 完整。
-17. docs/test-report.md 完整。
-18. docs/demo-script.md 完整。
+16. README.md 中的设计、架构和发布边界说明完整。
+17. TEST_REPORT.md 与当前功能一致。
+18. README.md 中保留 Demo 视频链接占位。
 19. 无真实密钥。
 20. 无敏感信息。
 21. 无未声明第三方依赖。
@@ -1058,22 +1039,15 @@ Electron 是可选加分项，不是第一优先级。
     commit 信息推荐格式：
 
     ```bash
-    feat: add payload export preview
-    fix: handle empty platform selection
-    docs: update connector mode design
-    test: add manual test cases for payload export
-    style: improve publisher mode layout
-    refactor: keep mock publisher compatible
-    ```
-
-    如果实训营要求中文 commit，也可以使用中文，例如：
-
-    ```bash
     feat: 新增 Payload 导出预览功能
+    fix: 修复未选择平台时的提示逻辑
     docs: 补充连接器模式设计说明
     test: 新增 Payload 导出手动测试用例
-    fix: 修复未选择平台时的提示逻辑
+    style: 优化发布模式布局
+    refactor: 保持 Mock 发布器兼容性
     ```
+
+    所有 commit 提交说明必须使用中文。
 
     禁止：
 
