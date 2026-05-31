@@ -409,6 +409,9 @@
   }
 
   function bindDemoButton() {
+    DOM.btnFillDemo = document.getElementById('btn-fill-demo');
+    DOM.btnViewConnector = document.getElementById('btn-view-connector');
+
     if (DOM.btnFillDemo) {
       DOM.btnFillDemo.addEventListener('click', function() {
         if(DOM.inputTitle) DOM.inputTitle.value = 'AI 时代的内容创作者生存指南';
