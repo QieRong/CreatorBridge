@@ -268,6 +268,6 @@ npm run dist
 
 ## 演示说明
 
-> 演示视频链接待录制完成后补充。
+> 🎬 [演示视频可播放 (飞书云盘)](https://my.feishu.cn/file/IJpibmhfmoyCO5xcxqscOnfNncf?from=from_copylink)
 >
 如需体验完整功能，请在支持现代 CSS Grid 规范的浏览器中打开 `index.html`。
