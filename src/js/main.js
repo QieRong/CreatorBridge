@@ -796,7 +796,7 @@
           return;
         }
         var token = DOM.inputRuntimeToken?.value || '';
-        var checkUrl = url.replace(/\\/$/, '') + '/health';
+        var checkUrl = url.replace(/\/$/, '') + '/health';
         var controller = new AbortController();
         var timeoutId = setTimeout(function() { controller.abort(); }, 5000); // 5s timeout
 
