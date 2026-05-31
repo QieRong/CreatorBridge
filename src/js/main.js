@@ -39,6 +39,29 @@
     'default': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>'
   };
 
+  function invalidateAdaptationState() {
+    var hadAdaptedContent = state.adaptedContents.length > 0 || state.unifiedPayload;
+
+    state.unifiedContent = null;
+    state.adaptedContents = [];
+    state.validationMessages = [];
+    state.unifiedPayload = null;
+    state.activeTabPlatformId = null;
+
+    if (DOM.payloadCode) {
+      DOM.payloadCode.textContent = '生成适配结果后，将自动生成标准 PublishPayload。';
+    }
+
+    var statStatus = document.querySelector('.stat-status');
+    if (statStatus) {
+      statStatus.textContent = '待适配';
+    }
+
+    if (hadAdaptedContent && DOM.platformTabs && DOM.tabContentArea) {
+      renderTabsAndPreviews([], []);
+    }
+  }
+
   /** 缓存 DOM 元素引用 */
   function cacheDOM() {
     DOM.inputTitle = document.getElementById('input-title');
@@ -195,6 +218,7 @@
     if (DOM.statPlatforms) {
       DOM.statPlatforms.textContent = state.selectedPlatforms.length;
     }
+    invalidateAdaptationState();
     updateButtonStates();
   }
 
@@ -202,6 +226,7 @@
     if (DOM.inputTitle && DOM.titleCounter) {
       DOM.inputTitle.addEventListener('input', function () {
         DOM.titleCounter.textContent = DOM.inputTitle.value.length + ' / 100';
+        invalidateAdaptationState();
         updateButtonStates();
       });
     }
@@ -212,6 +237,13 @@
         if (DOM.readTime) {
           DOM.readTime.textContent = '预计阅读: ' + Math.ceil(len / 300) + ' 分钟';
         }
+        invalidateAdaptationState();
+        updateButtonStates();
+      });
+    }
+    if (DOM.inputTags) {
+      DOM.inputTags.addEventListener('input', function () {
+        invalidateAdaptationState();
         updateButtonStates();
       });
     }
@@ -285,6 +317,7 @@
       renderMediaPreview();
       DOM.inputMedia.value = '';
       if (DOM.statMedia) DOM.statMedia.textContent = state.mediaAssets.length;
+      invalidateAdaptationState();
       updateButtonStates();
     });
   }
@@ -331,6 +364,8 @@
         state.mediaAssets.splice(idx, 1);
         renderMediaPreview();
         if (DOM.statMedia) DOM.statMedia.textContent = state.mediaAssets.length;
+        invalidateAdaptationState();
+        updateButtonStates();
       });
     });
   }
