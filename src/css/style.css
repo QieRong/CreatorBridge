@@ -382,9 +382,13 @@ body {
   padding: 20px; border-radius: var(--radius-md);
 }
 .preview-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary); }
+.preview-meta { color: var(--text-muted); font-size: 11px; margin-bottom: 10px; }
 .preview-body { font-size: 13px; line-height: 1.6; color: var(--text-secondary); white-space: pre-wrap; margin-bottom: 16px; }
 .preview-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
 .preview-tag { background: var(--bg-panel); border: 1px solid var(--border-color); padding: 2px 8px; border-radius: var(--radius-sm); font-size: 11px; }
+.preview-tips { color: var(--text-secondary); font-size: 12px; line-height: 1.6; margin-bottom: 14px; }
+.preview-tips-title { color: var(--text-primary); font-weight: 600; margin-bottom: 4px; }
+.preview-tips ul { margin: 0; padding-left: 18px; }
 
 /* 校验面板 */
 .validation-panel {
