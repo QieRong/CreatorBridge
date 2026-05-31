@@ -17,8 +17,9 @@
   "author": "QieRong",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^30.0.0",
-    "electron-builder": "^24.0.0"
+    "electron": "^42.3.0",
+    "electron-builder": "^26.8.1",
+    "electron-packager": "^17.1.2"
   },
   "build": {
     "appId": "com.creatorbridge.app",
