@@ -520,11 +520,17 @@
       // Content Box
       cardsHtml += '  <div class="preview-content-box">';
       cardsHtml += '    <div class="preview-title">' + Utils.escapeHTML(content.title) + '</div>';
+      cardsHtml += '    <div class="preview-meta">适配后字数：' + Utils.escapeHTML(String(content.estimatedLength || 0)) + '</div>';
       cardsHtml += '    <div class="preview-body">' + Utils.escapeHTML(content.body) + '</div>';
       if (content.tags && content.tags.length > 0) {
         cardsHtml += '  <div class="preview-tags">';
         content.tags.forEach(function(tag) { cardsHtml += '<span class="preview-tag">' + Utils.escapeHTML(tag) + '</span>'; });
         cardsHtml += '  </div>';
+      }
+      if (content.tips && content.tips.length > 0) {
+        cardsHtml += '  <div class="preview-tips"><div class="preview-tips-title">发布建议</div><ul>';
+        content.tips.forEach(function(tip) { cardsHtml += '<li>' + Utils.escapeHTML(tip) + '</li>'; });
+        cardsHtml += '  </ul></div>';
       }
       cardsHtml += '    <button class="btn btn-secondary btn-sm" onclick="App.handleCopy(\'' + content.platformId + '\')">📋 复制该平台内容</button>';
       cardsHtml += '  </div>';
@@ -606,6 +612,7 @@
 
     var copyText = '【' + content.platformName + '】\n\n标题：' + content.title + '\n\n正文：\n' + content.body + '\n\n';
     if (content.tags && content.tags.length > 0) copyText += '标签：' + content.tags.join('、') + '\n\n';
+    if (content.tips && content.tips.length > 0) copyText += '发布建议：\n- ' + content.tips.join('\n- ') + '\n';
     
     var copyPromise = Utils?.copyToClipboard(copyText);
     if (copyPromise) {
