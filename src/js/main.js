@@ -13,6 +13,8 @@
   var Validator = window.Validator;
   var Publisher = window.Publisher;
   var StorageMod = window.Storage;
+  var AiUtils = window.AiUtils;
+  var AiClient = window.AiClient;
 
   // ========== DOM 元素引用 ==========
   var DOM = {};
@@ -27,7 +29,9 @@
     mediaAssets: [],
     activeTabPlatformId: null,
     connectorConfig: { enabled: false, baseUrl: '' },
-    runtimeToken: ''
+    runtimeToken: '',
+    adaptationMode: 'quick',
+    isAdapting: false
   };
 
   var PLATFORM_ICONS = {
@@ -75,6 +79,7 @@
     DOM.readTime = document.getElementById('read-time');
     
     DOM.platformSelector = document.getElementById('platform-selector');
+    DOM.adaptationMode = document.getElementById('adaptation-mode');
     
     // Top Bar Buttons
     DOM.btnAdapt = document.getElementById('btn-adapt');
@@ -135,9 +140,14 @@
 
     // Adapt Button
     if (DOM.btnAdapt) {
-      if (title && body && hasPlatform) {
+      if (title && body && hasPlatform && !state.isAdapting) {
         DOM.btnAdapt.disabled = false;
         DOM.btnAdapt.title = '一键生成平台适配结果';
+        DOM.btnAdapt.textContent = '一键适配';
+      } else if (state.isAdapting) {
+        DOM.btnAdapt.disabled = true;
+        DOM.btnAdapt.title = '正在生成适配内容';
+        DOM.btnAdapt.textContent = '正在适配…';
       } else {
         DOM.btnAdapt.disabled = true;
         DOM.btnAdapt.title = '请先填写标题、正文并选择发布平台';
@@ -247,6 +257,21 @@
         updateButtonStates();
       });
     }
+  }
+
+  function bindAdaptationModeEvents() {
+    if (!DOM.adaptationMode) return;
+
+    DOM.adaptationMode.addEventListener('change', function (event) {
+      if (!event.target || event.target.name !== 'adaptation-mode') return;
+      state.adaptationMode = event.target.value === 'ai' ? 'ai' : 'quick';
+      var options = DOM.adaptationMode.querySelectorAll('.adaptation-mode-option');
+      options.forEach(function (option) {
+        option.classList.toggle('selected', option.querySelector('input').checked);
+      });
+      invalidateAdaptationState();
+      updateButtonStates();
+    });
   }
 
   function bindMediaUpload() {
@@ -433,7 +458,28 @@
     }
   }
 
-  function handleAdapt() {
+  function createRuleAdaptedContents() {
+    return Adapters?.adaptContentForSelectedPlatforms(state.selectedPlatforms, state.unifiedContent) || [];
+  }
+
+  function createAiAdaptedContents(targets) {
+    return targets.map(function (target) {
+      var tips = ['已根据原文语义进行平台化改写，发布前请核对事实与措辞。'];
+      var warnings = [];
+      return Models?.createAdaptedContent(
+        target.platformId,
+        target.platformName,
+        target.title,
+        target.body,
+        target.tags,
+        tips,
+        warnings,
+        Utils?.countTextLength(target.body) || 0
+      ) || Object.assign({ tips: tips, warnings: warnings, formatType: 'text-preview' }, target);
+    });
+  }
+
+  async function handleAdapt() {
     var title = DOM.inputTitle?.value?.trim() || '';
     var body = DOM.inputBody?.value || '';
     var tagsStr = DOM.inputTags?.value || '';
@@ -458,7 +504,34 @@
       id: 'content_' + Date.now(), title: title, body: body, tags: tags, media: media
     };
 
-    state.adaptedContents = Adapters?.adaptContentForSelectedPlatforms(state.selectedPlatforms, state.unifiedContent) || [];
+    state.isAdapting = true;
+    updateButtonStates();
+
+    var usedFallback = false;
+    try {
+      if (state.adaptationMode === 'ai') {
+        if (!AiClient || !AiUtils || !Platforms?.getPlatformById) {
+          usedFallback = true;
+          state.adaptedContents = createRuleAdaptedContents();
+        } else {
+          var adaptation = await AiClient.adaptWithFallback({
+            payload: { title: title, body: body, tags: tags, platforms: state.selectedPlatforms },
+            normalize: function (targets) {
+              return AiUtils.normalizeAiTargets(targets, state.selectedPlatforms, Platforms.getPlatformById);
+            },
+            fallback: createRuleAdaptedContents
+          });
+
+          usedFallback = adaptation.mode === 'fallback';
+          state.adaptedContents = usedFallback ? adaptation.contents : createAiAdaptedContents(adaptation.targets);
+        }
+      } else {
+        state.adaptedContents = createRuleAdaptedContents();
+      }
+    } finally {
+      state.isAdapting = false;
+    }
+
     var adaptedMessages = Validator?.validateAdaptedContent(state.adaptedContents) || [];
     
     var infoMessages = rawMessages.filter(function (m) { return m.level === 'info'; });
@@ -485,7 +558,13 @@
     var statStatus = document.querySelector('.stat-status');
     if (statStatus) statStatus.textContent = '已生成预览';
 
-    showToast('✅ 适配成功：已生成所有选中平台的预览内容！', 'success');
+    if (usedFallback) {
+      showToast('AI适配失败，已切换为本地规则适配', 'warning', 5000);
+    } else if (state.adaptationMode === 'ai') {
+      showToast('AI智能适配完成：已生成所有选中平台的预览内容！', 'success');
+    } else {
+      showToast('✅ 快速适配完成：已生成所有选中平台的预览内容！', 'success');
+    }
   }
 
   // ========== 中栏渲染：Tabs 与 预览 ==========
@@ -929,6 +1008,7 @@
     renderPlatformSelector();
     bindPlatformEvents();
     bindInputCounters();
+    bindAdaptationModeEvents();
     bindMediaUpload();
     bindAdaptButton();
     bindPublishButton();

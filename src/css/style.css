@@ -330,6 +330,11 @@ body {
 
 /* 平台复选框 */
 .platform-selector { display: flex; flex-direction: column; gap: 8px; }
+.adaptation-mode-group { padding-top: 4px; border-top: 1px solid var(--border-color); }
+.adaptation-mode-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.adaptation-mode-option { display: flex; align-items: center; gap: 7px; min-height: 36px; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; font-size: 12px; transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast); }
+.adaptation-mode-option input { accent-color: var(--color-primary); }
+.adaptation-mode-option.selected { border-color: var(--color-primary); background: rgba(99, 102, 241, 0.12); color: var(--text-primary); }
 .platform-item {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 14px; background: var(--bg-input);

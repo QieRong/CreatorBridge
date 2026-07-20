@@ -86,6 +86,21 @@
               <label class="form-label" for="input-tags">标签</label>
               <input type="text" class="form-input" id="input-tags" placeholder="如：学习, 效率工具">
             </div>
+
+            <div class="form-group adaptation-mode-group">
+              <label class="form-label">适配模式</label>
+              <div class="adaptation-mode-options" id="adaptation-mode" role="radiogroup" aria-label="内容适配模式">
+                <label class="adaptation-mode-option">
+                  <input type="radio" name="adaptation-mode" value="ai">
+                  <span>智能适配（AI）</span>
+                </label>
+                <label class="adaptation-mode-option selected">
+                  <input type="radio" name="adaptation-mode" value="quick" checked>
+                  <span>快速适配（本地规则）</span>
+                </label>
+              </div>
+              <div class="input-hint">智能适配需通过本地 Node 服务调用 OpenRouter；失败时会自动回退本地规则。</div>
+            </div>
           </div>
         </section>
 
@@ -205,6 +220,7 @@
 
   <script src="src/js/utils.js"></script>
   <script src="src/js/ai-utils.js"></script>
+  <script src="src/js/ai-client.js"></script>
   <script src="src/js/models.js"></script>
   <script src="src/js/platforms.js"></script>
   <script src="src/js/adapters.js"></script>
