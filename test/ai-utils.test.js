@@ -42,6 +42,19 @@ test('normalizeAiTargets 拒绝缺少已选平台的 AI 返回', () => {
   assert.match(result.message, /平台/);
 });
 
+test('normalizeAiTargets 拒绝标题或正文为空的平台内容', () => {
+  const result = AiUtils.normalizeAiTargets([{
+    platformId: 'wechat',
+    platformName: '公众号',
+    title: '有效标题',
+    body: '   ',
+    tags: []
+  }], ['wechat'], getPlatformById);
+
+  assert.equal(result.ok, false);
+  assert.match(result.message, /不完整/);
+});
+
 test('normalizeAiTargets 规整超限的小红书标题正文和标签', () => {
   const result = AiUtils.normalizeAiTargets([{
     platformId: 'xiaohongshu',

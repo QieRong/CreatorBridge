@@ -102,7 +102,7 @@
         return { ok: false, message: 'AI 返回的平台与已选平台不一致' };
       }
 
-      if (typeof target.title !== 'string' || typeof target.body !== 'string' || !Array.isArray(target.tags)) {
+      if (typeof target.title !== 'string' || !target.title.trim() || typeof target.body !== 'string' || !target.body.trim() || !Array.isArray(target.tags)) {
         return { ok: false, message: 'AI 返回的平台内容字段不完整' };
       }
 

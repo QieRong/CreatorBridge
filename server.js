@@ -98,7 +98,7 @@ function hasCompleteTargets(targets, platforms) {
 
   const seen = new Set();
   return targets.every((target) => {
-    if (!target || typeof target !== 'object' || typeof target.platformId !== 'string' || typeof target.platformName !== 'string' || typeof target.title !== 'string' || typeof target.body !== 'string' || !Array.isArray(target.tags)) {
+    if (!target || typeof target !== 'object' || typeof target.platformId !== 'string' || typeof target.platformName !== 'string' || typeof target.title !== 'string' || !target.title.trim() || typeof target.body !== 'string' || !target.body.trim() || !Array.isArray(target.tags)) {
       return false;
     }
     if (!platforms.includes(target.platformId) || seen.has(target.platformId)) {

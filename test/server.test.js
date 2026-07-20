@@ -97,6 +97,24 @@ test('AI 代理在模型返回非法 JSON 时返回安全错误', async () => {
   assert.equal(response.body.error, 'AI_RESPONSE_INVALID');
 });
 
+test('AI 代理拒绝标题或正文为空的平台内容', async () => {
+  const app = createApp({
+    apiKey: 'test-key',
+    model: 'nvidia/test-model',
+    fetchImpl: async () => createFetchResponse({
+      targets: [
+        { platformId: 'wechat', platformName: '公众号', title: '有效标题', body: '  ', tags: [] },
+        { platformId: 'xiaohongshu', platformName: '小红书', title: '分享标题', body: '轻松分享。', tags: ['内容创作'] }
+      ]
+    })
+  });
+
+  const response = await postJson(app, '/api/ai-adapt', validPayload);
+
+  assert.equal(response.status, 502);
+  assert.equal(response.body.error, 'AI_RESPONSE_INVALID');
+});
+
 test('AI 代理在请求超时时返回超时错误', async () => {
   const app = createApp({
     apiKey: 'test-key',
