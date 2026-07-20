@@ -5,6 +5,9 @@
   "main": "src/electron/main.js",
   "scripts": {
     "start": "electron .",
+    "serve": "node server.js",
+    "dev": "node server.js",
+    "test": "node --test test/*.test.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
   },
@@ -16,6 +19,10 @@
   ],
   "author": "QieRong",
   "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2"
+  },
   "devDependencies": {
     "electron": "^42.3.0",
     "electron-builder": "^26.8.1",
