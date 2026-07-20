@@ -424,6 +424,7 @@ body {
 .preview-tips { color: var(--text-secondary); font-size: 12px; line-height: 1.6; margin-bottom: 14px; }
 .preview-tips-title { color: var(--text-primary); font-weight: 600; margin-bottom: 4px; }
 .preview-tips ul { margin: 0; padding-left: 18px; }
+.btn-view-original { margin-right: 8px; }
 
 /* 校验面板 */
 .validation-panel {
@@ -513,6 +514,18 @@ body {
   border-radius: var(--radius-lg); box-shadow: var(--shadow-md);
   width: 480px; max-width: 90vw;
   display: flex; flex-direction: column;
+}
+.original-content-modal-container { width: 680px; }
+.original-content-text {
+  margin: 0;
+  max-height: 56vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.7;
 }
 .modal-header {
   padding: 16px 24px; border-bottom: 1px solid var(--border-color);

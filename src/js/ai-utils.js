@@ -70,6 +70,21 @@
   }
 
   /**
+   * 将当前输入内容格式化为完整原文，用于预览区“查看原文”。
+   * 不做截断、不发送网络请求。
+   */
+  function formatOriginalContent(content) {
+    var source = content && typeof content === 'object' ? content : {};
+    var title = source.title == null ? '' : String(source.title).trim();
+    var body = source.body == null ? '' : String(source.body).trim();
+    var tags = Array.isArray(source.tags) ? source.tags.map(function (tag) {
+      return String(tag == null ? '' : tag).trim();
+    }).filter(Boolean) : [];
+
+    return '标题：' + (title || '未填写') + '\n\n正文：\n' + (body || '未填写') + '\n\n标签：' + (tags.length ? tags.join('、') : '未填写');
+  }
+
+  /**
    * 验证并规整 AI 返回的 targets。
    * AI 缺少、重复或额外返回平台时返回 ok:false，由主流程使用规则适配回退。
    *
@@ -139,6 +154,7 @@
 
   return {
     truncateBySentence: truncateBySentence,
+    formatOriginalContent: formatOriginalContent,
     normalizeAiTargets: normalizeAiTargets
   };
 });

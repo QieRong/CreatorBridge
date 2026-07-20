@@ -35,6 +35,21 @@ test('truncateBySentence 优先保留完整句子且总长度不超限', () => {
   assert.ok(result.length <= 5);
 });
 
+test('formatOriginalContent 返回未截断的用户输入内容', () => {
+  const original = {
+    title: '完整标题',
+    body: '第一句内容。\n第二句内容。',
+    tags: ['标签一', '标签二']
+  };
+
+  const result = AiUtils.formatOriginalContent(original);
+
+  assert.match(result, /标题：完整标题/);
+  assert.match(result, /第一句内容。\n第二句内容。/);
+  assert.match(result, /标签：标签一、标签二/);
+  assert.doesNotMatch(result, /\.\.\.|…/);
+});
+
 test('normalizeAiTargets 拒绝缺少已选平台的 AI 返回', () => {
   const result = AiUtils.normalizeAiTargets([], ['wechat'], getPlatformById);
 

@@ -120,6 +120,9 @@
     DOM.inputRuntimeToken = document.getElementById('input-runtime-token');
     DOM.btnTestConnection = document.getElementById('btn-test-connection');
     DOM.btnSaveSettings = document.getElementById('btn-save-settings');
+    DOM.originalContentModal = document.getElementById('original-content-modal');
+    DOM.originalContentText = document.getElementById('original-content-text');
+    DOM.btnCloseOriginalContent = document.getElementById('btn-close-original-content');
   }
 
   function updateButtonStates() {
@@ -614,6 +617,7 @@
         content.tips.forEach(function(tip) { cardsHtml += '<li>' + Utils.escapeHTML(tip) + '</li>'; });
         cardsHtml += '  </ul></div>';
       }
+      cardsHtml += '    <button class="btn btn-ghost btn-sm btn-view-original" onclick="App.showOriginalContent()">查看原文</button>';
       cardsHtml += '    <button class="btn btn-secondary btn-sm" onclick="App.handleCopy(\'' + content.platformId + '\')">📋 复制该平台内容</button>';
       cardsHtml += '  </div>';
 
@@ -700,6 +704,37 @@
     if (copyPromise) {
       copyPromise.then(function () { showToast(content.platformName + ' 已复制', 'success'); })
         .catch(function () { showToast('复制失败', 'error'); });
+    }
+  }
+
+  function showOriginalContent() {
+    if (!state.unifiedContent || !DOM.originalContentModal || !DOM.originalContentText) {
+      showToast('暂无可查看的原文内容', 'warning');
+      return;
+    }
+
+    if (AiUtils && typeof AiUtils.formatOriginalContent === 'function') {
+      DOM.originalContentText.textContent = AiUtils.formatOriginalContent(state.unifiedContent);
+    } else {
+      DOM.originalContentText.textContent = '标题：' + state.unifiedContent.title + '\n\n正文：\n' + state.unifiedContent.body + '\n\n标签：' + state.unifiedContent.tags.join('、');
+    }
+    DOM.originalContentModal.style.display = 'flex';
+  }
+
+  function closeOriginalContent() {
+    if (DOM.originalContentModal) {
+      DOM.originalContentModal.style.display = 'none';
+    }
+  }
+
+  function bindOriginalContentModal() {
+    if (DOM.btnCloseOriginalContent) {
+      DOM.btnCloseOriginalContent.addEventListener('click', closeOriginalContent);
+    }
+    if (DOM.originalContentModal) {
+      DOM.originalContentModal.addEventListener('click', function (event) {
+        if (event.target === DOM.originalContentModal) closeOriginalContent();
+      });
     }
   }
 
@@ -1022,13 +1057,15 @@
     bindTabWheelScroll();
     initBackToTop();
     initConnectorSettings();
+    bindOriginalContentModal();
   }
 
   document.addEventListener('DOMContentLoaded', init);
 
   window.App = {
     showToast: showToast,
-    handleCopy: handleCopy
+    handleCopy: handleCopy,
+    showOriginalContent: showOriginalContent
   };
 
 })();

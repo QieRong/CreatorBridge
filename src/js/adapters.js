@@ -13,6 +13,49 @@
   var Models = window.Models;
   var Utils = window.Utils;
 
+  function getLeadingSentence(text) {
+    var source = String(text || '').replace(/\s*\n\s*/g, ' ').trim();
+    if (!source) return '';
+
+    var match = source.match(/^[\s\S]*?[。！？；]/);
+    return match ? match[0].trim() : source;
+  }
+
+  function truncateAtBoundary(text, maxLength) {
+    var source = String(text || '').trim();
+    var limit = Number(maxLength);
+    if (!Number.isFinite(limit) || limit <= 0 || !source) return '';
+    if (source.length <= limit) return source;
+
+    var prefix = source.slice(0, Math.max(1, limit - 1));
+    var boundary = Math.max(
+      prefix.lastIndexOf('。'), prefix.lastIndexOf('！'), prefix.lastIndexOf('？'),
+      prefix.lastIndexOf('；'), prefix.lastIndexOf('，'), prefix.lastIndexOf('、'),
+      prefix.lastIndexOf('：'), prefix.lastIndexOf(' ')
+    );
+    var result = boundary > 0 ? prefix.slice(0, boundary + 1).trim() : prefix.trim();
+    return result + '…';
+  }
+
+  function getSentenceExcerpt(text, maxLength) {
+    return truncateAtBoundary(getLeadingSentence(text), maxLength);
+  }
+
+  function truncateBodyBySentence(text, maxLength) {
+    var source = String(text || '').trim();
+    var limit = Number(maxLength);
+    if (!Number.isFinite(limit) || limit <= 0 || !source) return '';
+    if (source.length <= limit) return source;
+
+    var prefix = source.slice(0, Math.max(1, limit - 1));
+    var boundary = Math.max(
+      prefix.lastIndexOf('。'), prefix.lastIndexOf('！'), prefix.lastIndexOf('？'),
+      prefix.lastIndexOf('；'), prefix.lastIndexOf('\n')
+    );
+    var result = boundary >= 0 ? prefix.slice(0, boundary + 1).trim() : prefix.trim();
+    return result + '…';
+  }
+
   /**
    * 微信公众号适配器
    * 风格：正式、权威、逻辑严密，适合深度长文
@@ -24,22 +67,16 @@
     var body = unified.body || '';
     var tags = unified.tags || [];
 
-    // 标题处理：沿用原始标题，适当润色使其正式
-    var adaptedTitle = title;
-    if (title && !title.endsWith('》') && !title.endsWith('」')) {
-      adaptedTitle = '深度解读：' + title;
-    }
+    // 标题处理：保留原意，不额外添加夸张前缀
+    var adaptedTitle = truncateAtBoundary(title, 64);
 
-    // 正文转化：添加导语、分段、重点总结、版权声明
+    // 正文转化：添加导语、分段、重点总结
     var bodyLines = body.split('\n').filter(function (line) {
       return line.trim() !== '';
     });
 
-    // 提取正文前80字作为导语
-    var summary = body.substring(0, 80).replace(/\n/g, ' ');
-    if (body.length > 80) {
-      summary += '...';
-    }
+    // 导语优先保留原文首个完整句子，避免出现半句和多个句点
+    var summary = getLeadingSentence(bodyLines[0] || body);
 
     var adaptedBody = '';
     adaptedBody += '【导语】' + summary + '\n\n';
@@ -54,14 +91,14 @@
 
     // 提取核心观点作为总结
     var keyPoints = bodyLines.slice(0, 3).map(function (line, i) {
-      return (i + 1) + '、' + Utils.truncateText(line.trim(), 40);
+      return (i + 1) + '、' + getLeadingSentence(line);
     });
 
     adaptedBody += '━━━━━━━━━━━━━━━━━━━━\n\n';
     adaptedBody += '【重点总结】\n';
     adaptedBody += keyPoints.join('\n') + '\n\n';
-    adaptedBody += '━━━━━━━━━━━━━━━━━━━━\n';
-    adaptedBody += '声明：本文由 CreatorBridge 模拟适配生成，版权归原作者所有。';
+    adaptedBody += '━━━━━━━━━━━━━━━━━━━━';
+    adaptedBody = truncateBodyBySentence(adaptedBody, 8000);
 
     // 标签处理：保留原始标签作为关键词
     var adaptedTags = tags.slice(0, 8);
@@ -107,6 +144,7 @@
     if (title && !title.includes('？') && !title.includes('?')) {
       adaptedTitle = '如何评价「' + title + '」？';
     }
+    adaptedTitle = truncateAtBoundary(adaptedTitle, 50);
 
     // 正文转化：知乎风格
     var bodyLines = body.split('\n').filter(function (line) {
@@ -115,11 +153,10 @@
 
     // 提取核心结论
     var coreConclusion = bodyLines.length > 0
-      ? Utils.truncateText(bodyLines[0].trim(), 60)
+      ? getLeadingSentence(bodyLines[0])
       : '以下是关于此话题的深度分析。';
 
     var adaptedBody = '';
-    adaptedBody += '谢邀。\n\n';
     adaptedBody += '**核心结论：' + coreConclusion + '**\n\n';
     adaptedBody += '---\n\n';
 
@@ -138,10 +175,8 @@
       }
     });
 
-    adaptedBody += '---\n\n';
-    adaptedBody += '## 总结\n\n';
-    adaptedBody += '以上是我对「' + title + '」的个人见解，欢迎各位知友在评论区理性探讨，分享不同的观点和看法。\n\n';
-    adaptedBody += '> 如果这个回答对你有帮助，欢迎点赞支持 👍';
+    adaptedBody += '---';
+    adaptedBody = truncateBodyBySentence(adaptedBody, 10000);
 
     // 标签处理：限制5个，偏专业
     var adaptedTags = tags.slice(0, 5);
@@ -181,11 +216,8 @@
     var body = unified.body || '';
     var tags = unified.tags || [];
 
-    // 标题处理：添加吸睛词和看点
-    var adaptedTitle = '【干货预警】' + title + '！看完直接起飞！';
-    if (adaptedTitle.length > 80) {
-      adaptedTitle = '【必看】' + title;
-    }
+    // 标题处理：保留原始标题，避免生成无依据的营销表达
+    var adaptedTitle = truncateAtBoundary(title, 80);
 
     // 正文转化：视频简介风格
     var bodyLines = body.split('\n').filter(function (line) {
@@ -194,33 +226,24 @@
 
     // 提取看点
     var highlights = bodyLines.slice(0, 2).map(function (line) {
-      return Utils.truncateText(line.trim(), 30);
+      return getSentenceExcerpt(line, 240);
     });
 
     var adaptedBody = '';
-    adaptedBody += '🌟 本期看点：\n';
+    adaptedBody += '内容要点：\n';
     highlights.forEach(function (h) {
       adaptedBody += '▶ ' + h + '\n';
     });
     adaptedBody += '\n';
 
-    adaptedBody += '📝 内容简介：\n';
+    adaptedBody += '内容简介：\n';
     // 正文极简保留
     var briefContent = bodyLines.slice(0, 5).map(function (line) {
-      return '• ' + Utils.truncateText(line.trim(), 50);
+      return '• ' + getSentenceExcerpt(line, 300);
     });
     adaptedBody += briefContent.join('\n') + '\n\n';
+    adaptedBody = truncateBodyBySentence(adaptedBody, 2000);
 
-    if (bodyLines.length > 5) {
-      adaptedBody += '......更多精彩内容请看完整视频/专栏！\n\n';
-    }
-
-    // 互动引导
-    adaptedBody += '💬 小伙伴们觉得怎么样？欢迎在评论区留下你们的想法！\n\n';
-    adaptedBody += '━━━━━━━━━━━━━━━━━━━━\n';
-    adaptedBody += '三连预警！觉得本期内容对你有帮助的话，\n';
-    adaptedBody += '别忘了【点赞👍+投币💰+收藏⭐】支持一下UP主哦！\n';
-    adaptedBody += '(🔔゜-゜)つロ 干杯~';
 
     // 标签处理
     var adaptedTags = tags.slice(0, 12);
@@ -260,50 +283,35 @@
     var body = unified.body || '';
     var tags = unified.tags || [];
 
-    // 标题处理：截取前15字，添加Emoji
-    var shortTitle = title.substring(0, 15);
-    var adaptedTitle = '🔥 ' + shortTitle;
-    if (title.length > 15) {
-      adaptedTitle += '...绝绝子！✨';
-    } else {
-      adaptedTitle += ' ✨';
-    }
-    // 确保不超过20字（含Emoji）
-    if (adaptedTitle.length > 22) {
-      adaptedTitle = '🔥' + title.substring(0, 14) + '✨';
-    }
+    // 标题处理：遵守平台长度，不添加夸张模板词
+    var adaptedTitle = truncateAtBoundary(title, 20);
 
     // 正文转化：口语化、碎片化、Emoji点缀
     var bodyLines = body.split('\n').filter(function (line) {
       return line.trim() !== '';
     });
 
-    // 关键词提取
-    var keyword = title.substring(0, 8);
-
     var emojiList = ['📌', '💡', '👉', '✅', '🌟', '💪', '🎯', '❤️'];
     var adaptedBody = '';
-    adaptedBody += '家人们！今天必须给你们安利' + keyword + '！👇\n\n';
 
     bodyLines.forEach(function (line, index) {
       var emoji = emojiList[index % emojiList.length];
-      var trimmed = Utils.truncateText(line.trim(), 60);
+      var trimmed = getSentenceExcerpt(line, 160);
       adaptedBody += emoji + ' ' + trimmed + '\n\n';
     });
 
-    // 尾部互动
-    adaptedBody += '～～～～～～～～～～\n';
-    adaptedBody += '姐妹们觉得怎么样？在评论区一起讨论吧！💖\n';
-    adaptedBody += '觉得有用的话记得点赞收藏哦～比心 🫶\n\n';
-
     // 标签处理：转换为 #话题 格式
-    var adaptedTags = tags.slice(0, 10).map(function (tag) {
+    var adaptedTags = tags.slice(0, 6).map(function (tag) {
       return '#' + tag;
     });
 
+    var tagText = adaptedTags.join(' ');
+    var bodyLimit = 1000 - (tagText ? tagText.length + 2 : 0);
+    adaptedBody = truncateBodyBySentence(adaptedBody, bodyLimit);
+
     // 在正文底部追加话题标签
     if (adaptedTags.length > 0) {
-      adaptedBody += adaptedTags.join(' ');
+      adaptedBody += '\n\n' + tagText;
     }
 
     var tips = [
@@ -353,12 +361,7 @@
     // 正文转化：精简、保留核心信息
     // 如果太长则截断，留出话题空间
     var bodyLengthLimit = 130; 
-    var truncatedBody = Utils.truncateText(body, bodyLengthLimit);
-    if (body.length > bodyLengthLimit) {
-      truncatedBody += '... (点击长文查看全文)\n';
-    } else {
-      truncatedBody += '\n';
-    }
+    var truncatedBody = truncateAtBoundary(body.replace(/\n/g, ' '), bodyLengthLimit) + '\n';
     adaptedBody += truncatedBody;
 
     // 标签处理：微博标准的话题格式是 #话题#
@@ -369,6 +372,7 @@
     if (adaptedTags.length > 0) {
       adaptedBody += '\n' + adaptedTags.join(' ');
     }
+    adaptedBody = truncateBodyBySentence(adaptedBody, 1500);
 
     var tips = [
       '微博更适合短平快的碎片化信息表达',
@@ -455,4 +459,3 @@
   };
 
 })();
-
